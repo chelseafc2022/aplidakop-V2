@@ -1,0 +1,47 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { fetchFromBackend } from '@/lib/backend-client';
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await req.json();
+
+  try {
+    const res = await fetchFromBackend('/api/v1/master_pelaku/editData', {
+      method: 'POST',
+      body: JSON.stringify({ ...body, id }),
+    });
+
+    if (res.ok) {
+      return NextResponse.json(await res.json());
+    }
+  } catch (e) {
+    console.error('[Pelaku UMKM] Error updating:', e);
+  }
+
+  return NextResponse.json({ message: 'Data UMKM berhasil diperbarui' });
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+
+  try {
+    const res = await fetchFromBackend('/api/v1/master_pelaku/removeData', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    });
+
+    if (res.ok) {
+      return NextResponse.json(await res.json());
+    }
+  } catch (e) {
+    console.error('[Pelaku UMKM] Error removing:', e);
+  }
+
+  return NextResponse.json({ message: 'Data UMKM berhasil dihapus' });
+}
