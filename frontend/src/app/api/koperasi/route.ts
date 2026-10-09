@@ -7,6 +7,9 @@ export async function GET(req: NextRequest) {
   const limit = Number(searchParams.get('limit') || 10);
   const search = searchParams.get('search') || '';
   const kecamatanId = searchParams.get('kecamatanId') || '';
+  const desaId = searchParams.get('desaId') || '';
+  const jenisKoperasiId = searchParams.get('jenisKoperasiId') || '';
+  const statusAktif = searchParams.get('statusAktif') || '';
 
   try {
     const res = await fetchFromBackend('/api/v1/master_koperasi/view', {
@@ -16,7 +19,9 @@ export async function GET(req: NextRequest) {
         data_ke: page,
         cari_value: kecamatanId,
         pencarian: search,
-        desa_id: '',
+        desa_id: desaId,
+        jenis_koperasi: jenisKoperasiId,
+        status_aktif: statusAktif,
       }),
     });
 
@@ -24,6 +29,7 @@ export async function GET(req: NextRequest) {
       const json = await res.json();
       const rawList = json?.data || [];
       const totalPages = Number(json?.jml_data) || 1;
+      const total = typeof json?.total_data === 'number' ? json.total_data : totalPages * limit;
 
       const mapped = rawList.map((item: any) => ({
         id: String(item.id || item.no_bh),
@@ -59,8 +65,8 @@ export async function GET(req: NextRequest) {
         meta: {
           page,
           limit,
-          total: totalPages * limit,
-          totalPages,
+          total: mapped.length === 0 ? 0 : total,
+          totalPages: mapped.length === 0 ? 0 : totalPages,
         },
       });
     }
@@ -114,20 +120,28 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-
   try {
+    const body = await req.json();
+
     const res = await fetchFromBackend('/api/v1/master_koperasi/addData', {
       method: 'POST',
       body: JSON.stringify(body),
     });
 
-    if (res.ok) {
-      return NextResponse.json(await res.json());
+    const data = await res.json();
+    if (res.ok && data?.status !== false) {
+      return NextResponse.json(data);
     }
-  } catch (e) {
-    console.error('[Koperasi] Error saving data:', e);
-  }
 
-  return NextResponse.json({ message: 'Data Koperasi berhasil disimpan', data: body });
+    return NextResponse.json(
+      { message: data?.message || 'Gagal menyimpan data koperasi ke server' },
+      { status: res.status >= 400 ? res.status : 400 }
+    );
+  } catch (e: any) {
+    console.error('[Koperasi] Error saving data:', e);
+    return NextResponse.json(
+      { message: 'Koneksi ke backend gagal: ' + (e?.message || 'Unknown error') },
+      { status: 500 }
+    );
+  }
 }

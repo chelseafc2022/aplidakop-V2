@@ -6,22 +6,30 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await req.json();
-
   try {
+    const body = await req.json();
+
     const res = await fetchFromBackend('/api/v1/master_koperasi/editData', {
       method: 'POST',
       body: JSON.stringify({ ...body, id }),
     });
 
-    if (res.ok) {
-      return NextResponse.json(await res.json());
+    const data = await res.json();
+    if (res.ok && data?.status !== false) {
+      return NextResponse.json(data);
     }
-  } catch (e) {
-    console.error('[Koperasi] Error updating:', e);
-  }
 
-  return NextResponse.json({ message: 'Data Koperasi berhasil diperbarui' });
+    return NextResponse.json(
+      { message: data?.message || 'Gagal memperbarui data koperasi di server' },
+      { status: res.status >= 400 ? res.status : 400 }
+    );
+  } catch (e: any) {
+    console.error('[Koperasi] Error updating:', e);
+    return NextResponse.json(
+      { message: 'Koneksi ke backend gagal: ' + (e?.message || 'Unknown error') },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(
@@ -36,12 +44,20 @@ export async function DELETE(
       body: JSON.stringify({ id }),
     });
 
-    if (res.ok) {
-      return NextResponse.json(await res.json());
+    const data = await res.json();
+    if (res.ok && data?.status !== false) {
+      return NextResponse.json(data);
     }
-  } catch (e) {
-    console.error('[Koperasi] Error removing:', e);
-  }
 
-  return NextResponse.json({ message: 'Data Koperasi berhasil dihapus' });
+    return NextResponse.json(
+      { message: data?.message || 'Gagal menghapus data koperasi di server' },
+      { status: res.status >= 400 ? res.status : 400 }
+    );
+  } catch (e: any) {
+    console.error('[Koperasi] Error removing:', e);
+    return NextResponse.json(
+      { message: 'Koneksi ke backend gagal: ' + (e?.message || 'Unknown error') },
+      { status: 500 }
+    );
+  }
 }

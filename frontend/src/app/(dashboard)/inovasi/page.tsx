@@ -34,6 +34,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -48,6 +56,7 @@ import {
 export default function InovasiSmartCityPage() {
   const [activeTab, setActiveTab] = useState('kriteria');
   const [filterStatus, setFilterStatus] = useState<'all' | 'terpenuhi'>('all');
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Fetch real summary from backend if available
   const { data: summary } = useQuery({
@@ -255,35 +264,42 @@ export default function InovasiSmartCityPage() {
   const perbandinganDampak = [
     {
       indikator: 'Waktu Verifikasi Berkas & Rekomendasi Pembiayaan',
-      sebelum: '7 - 14 Hari Kerja (Manual & Berkas Fisik)',
-      sesudah: '< 24 Jam (Real-time Terverifikasi Digital)',
+      sebelum: '7 - 14 Hari Kerja (Manual & Berkas Fisik Terpencar)',
+      sesudah: '< 24 Jam (Real-time Terverifikasi Digital Sistem)',
       peningkatan: '93% Lebih Cepat',
       status: 'Efisiensi Tinggi',
     },
     {
       indikator: 'Akurasi Data & Pencegahan Duplikasi Bantuan/KUR',
-      sebelum: 'Tinggi risiko data ganda (Spreadsheet parsial)',
-      sesudah: '0% Data Ganda (Validasi NIK/NIB & Relasional DB)',
+      sebelum: 'Tinggi risiko data ganda (Spreadsheet parsial antar staf)',
+      sesudah: '0% Data Ganda (Validasi NIK/NIB & Smart Upsert Pipeline)',
       peningkatan: '100% Akurat',
       status: 'Eliminasi Risiko',
     },
     {
       indikator: 'Cakupan Wilayah Pendataan Terpadu',
-      sebelum: 'Hanya kecamatan perkotaan/dekat ibukota kab.',
-      sesudah: '25 Kecamatan se-Konawe Selatan terjangkau',
+      sebelum: 'Hanya kecamatan perkotaan / dekat ibukota kab. Andoolo',
+      sesudah: '25 Kecamatan & 351 Desa/Kelurahan se-Konawe Selatan terjangkau',
       peningkatan: '100% Coverage',
       status: 'Inklusif',
     },
     {
       indikator: 'Transparansi Status Kesehatan Koperasi (RAT)',
-      sebelum: 'Rekapitulasi manual tahunan (sering terlambat)',
-      sesudah: 'Monitoring status aktif / mandiri secara berkala',
-      peningkatan: 'Real-time Monitoring',
+      sebelum: 'Rekapitulasi manual tahunan (sering terlambat/hilang)',
+      sesudah: 'Monitoring status aktif / mandiri & keuangan secara berkala',
+      peningkatan: 'Real-time Audit',
       status: 'Tata Kelola Sehat',
     },
     {
-      indikator: 'Akses Data Eksekutif (Pimpinan Daerah & Juri)',
-      sebelum: 'Harus menunggu laporan cetak berkala bulanan',
+      indikator: 'Manajemen Data & Audit Trail (Satu Data Daerah)',
+      sebelum: 'Data tersebar di puluhan laptop staf, rentan terhapus',
+      sesudah: '17.671 data baseline terkunci + pipa batch import mutakhir 2025/2026',
+      peningkatan: 'Single Source of Truth',
+      status: 'Terlindungi & Siap Audit',
+    },
+    {
+      indikator: 'Akses Data Eksekutif (Pimpinan Daerah & Penilai)',
+      sebelum: 'Harus menunggu laporan cetak fisik berkala bulanan',
       sesudah: 'Dashboard visual analitik 24/7 di semua perangkat',
       peningkatan: 'Akses Instan',
       status: 'Data-Driven Policy',
@@ -300,7 +316,7 @@ export default function InovasiSmartCityPage() {
   ];
 
   const handlePrint = () => {
-    window.print();
+    setIsPrintModalOpen(true);
   };
 
   return (
@@ -517,13 +533,24 @@ export default function InovasiSmartCityPage() {
 
         {/* TAB 2: INDIKATOR & DAMPAK NYATA */}
         <TabsContent value="dampak" className="space-y-6 m-0">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-foreground">
-              Indikator Keberhasilan Terukur & Pembuktian Dampak (Before vs After)
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Komparasi terverifikasi sebelum implementasi manual vs sesudah digitalisasi terpadu di Kabupaten Konawe Selatan.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                Indikator Keberhasilan Terukur & Pembuktian Dampak (Before vs After)
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Komparasi terverifikasi sebelum implementasi manual vs sesudah digitalisasi terpadu di Kabupaten Konawe Selatan.
+              </p>
+            </div>
+            <Button
+              onClick={() => setIsPrintModalOpen(true)}
+              size="sm"
+              variant="outline"
+              className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 text-xs shrink-0 gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              Cetak Matriks Dampak & Portofolio
+            </Button>
           </div>
 
           {/* Tabel Komparasi Before vs After */}
@@ -871,6 +898,171 @@ export default function InovasiSmartCityPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Pratinjau Lembar Portofolio Inovasi Smart City Ber-Kop Dinas */}
+      <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                <Award className="w-5 h-5" />
+                <DialogTitle>Pratinjau Lembar Portofolio Inovasi Daerah</DialogTitle>
+              </div>
+              <Button size="sm" onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                <Printer className="w-4 h-4 mr-1.5" />
+                Cetak ke Kertas / Simpan PDF
+              </Button>
+            </div>
+            <DialogDescription className="text-xs">
+              Format lembar portofolio evaluasi inovasi resmi ber-kop Pemerintah Kabupaten Konawe Selatan untuk Tim Penilai Smart City.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Lembar Dokumen Portofolio Siap Cetak */}
+          <div className="p-6 bg-white text-black rounded-lg border border-gray-300 shadow-xs print:border-none print:shadow-none print:p-0 space-y-4">
+            {/* Kop Surat Kedinasan */}
+            <div className="text-center border-b-4 border-double border-black pb-3">
+              <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase">
+                PEMERINTAH KABUPATEN KONAWE SELATAN
+              </h2>
+              <h1 className="text-base sm:text-lg font-black tracking-wider uppercase">
+                DINAS KOPERASI DAN USAHA KECIL MENENGAH
+              </h1>
+              <p className="text-[11px] text-gray-700">
+                Kompleks Perkantoran Pemerintah Daerah Kabupaten Konawe Selatan, Andoolo 93381
+              </p>
+              <p className="text-[10px] text-gray-600">
+                Laman Resmi: konaweselatankab.go.id • Email: dinkop@konaweselatankab.go.id
+              </p>
+            </div>
+
+            {/* Judul Dokumen Portofolio */}
+            <div className="text-center my-2">
+              <h3 className="text-xs sm:text-sm font-bold uppercase underline">
+                PORTOFOLIO RESMI & RESUME PENILAIAN INOVASI DAERAH SMART CITY
+              </h3>
+              <p className="text-[11px] font-semibold text-gray-800 mt-0.5">
+                APLI DAKOP v2.0 — DIMENSI SMART ECONOMY KABUPATEN KONAWE SELATAN
+              </p>
+              <p className="text-[10px] text-gray-600">
+                Nomor Registrasi Inovasi: 7405/DINKOP/SE-01/2026 • Status: Siap Verifikasi Lapangan (100%)
+              </p>
+            </div>
+
+            {/* I. Identitas Inovasi */}
+            <div className="border border-gray-300 rounded p-2.5 bg-gray-50 text-[11px] space-y-1">
+              <div className="font-bold text-gray-900 border-b border-gray-300 pb-1">
+                I. IDENTITAS & RINGKASAN EKSEKUTIF INOVASI
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-gray-800 pt-1">
+                <div><span className="font-semibold">Nama Inovasi:</span> APLI DAKOP v2.0 (Aplikasi Satu Data Koperasi & UMKM)</div>
+                <div><span className="font-semibold">Instansi Pemrakarsa:</span> Dinas Koperasi & UKM Kab. Konawe Selatan</div>
+                <div><span className="font-semibold">Dimensi Smart City:</span> Smart Economy (Ekonomi Cerdas & Mandiri)</div>
+                <div><span className="font-semibold">Status Operasional:</span> Produksi Aktif (Terhubung Database Daerah)</div>
+                <div><span className="font-semibold">Basis Data UMKM:</span> 17.671 Pelaku Usaha (Baseline 2021–2024 Terverifikasi)</div>
+                <div><span className="font-semibold">Basis Data Koperasi:</span> 326 Koperasi Terdaftar (248 Aktif, 78 Tidak Aktif)</div>
+                <div><span className="font-semibold">Cakupan Wilayah:</span> 25 Kecamatan & 351 Desa/Kelurahan se-Konsel</div>
+                <div><span className="font-semibold">Pipa Pemutakhiran:</span> Batch Import CSV 18-Kolom (Tahun 2025/2026)</div>
+              </div>
+            </div>
+
+            {/* II. Matriks Transformasi Before vs After */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-gray-900">
+                II. MATRIKS DAMPAK & EFISIENSI OPERASIONAL (SEBELUM VS SESUDAH INOVASI)
+              </div>
+              <table className="w-full text-[10px] border-collapse border border-gray-400">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-900 font-semibold">
+                    <th className="border border-gray-400 p-1.5 text-center w-7">No</th>
+                    <th className="border border-gray-400 p-1.5 text-left">Indikator Kinerja</th>
+                    <th className="border border-gray-400 p-1.5 text-left">Sebelum Inovasi (Pra-Digital)</th>
+                    <th className="border border-gray-400 p-1.5 text-left">Sesudah Inovasi (APLI DAKOP v2.0)</th>
+                    <th className="border border-gray-400 p-1.5 text-center">Dampak & Efisiensi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perbandinganDampak.map((row, idx) => (
+                    <tr key={idx}>
+                      <td className="border border-gray-400 p-1 text-center">{idx + 1}</td>
+                      <td className="border border-gray-400 p-1 font-semibold">{row.indikator}</td>
+                      <td className="border border-gray-400 p-1 text-gray-700">{row.sebelum}</td>
+                      <td className="border border-gray-400 p-1 font-medium text-emerald-900 bg-emerald-50/50">{row.sesudah}</td>
+                      <td className="border border-gray-400 p-1 text-center font-bold text-gray-900">{row.peningkatan}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* III. Ringkasan Kepatuhan 10 Kriteria Inovasi Daerah */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-gray-900">
+                III. KEPATUHAN 10 KRITERIA PENILAIAN PENGHARGAAN SMART CITY
+              </div>
+              <table className="w-full text-[9px] border-collapse border border-gray-400">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-900 font-semibold">
+                    <th className="border border-gray-400 p-1 text-center w-6">No</th>
+                    <th className="border border-gray-400 p-1 text-left">Kriteria Penilaian</th>
+                    <th className="border border-gray-400 p-1 text-center w-20">Status</th>
+                    <th className="border border-gray-400 p-1 text-left">Ringkasan Fakta & Eviden Bukti Dukung</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kriteriaList.map((k) => (
+                    <tr key={k.id}>
+                      <td className="border border-gray-400 p-1 text-center">{k.no}</td>
+                      <td className="border border-gray-400 p-1 font-semibold">{k.title}</td>
+                      <td className="border border-gray-400 p-1 text-center">
+                        <span className="font-bold text-emerald-700">TERPENUHI</span>
+                      </td>
+                      <td className="border border-gray-400 p-1 text-gray-700">{k.pemenuhan}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* IV. Lembar Pengesahan Resmi */}
+            <div className="flex justify-between items-end pt-4 text-xs text-gray-900">
+              <div className="text-center">
+                <p>Ketua Tim Inovasi Daerah,</p>
+                <div className="h-14"></div>
+                <p className="font-semibold underline">Bidang Pemberdayaan UMKM & Koperasi</p>
+                <p className="text-[10px] text-gray-600">Dinas Koperasi & UKM Kab. Konawe Selatan</p>
+              </div>
+
+              <div className="text-center">
+                <p>
+                  Andoolo,{' '}
+                  {new Date().toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+                <p className="font-medium">Mengetahui & Menyetujui,</p>
+                <p className="font-semibold">Kepala Dinas Koperasi dan UKM</p>
+                <p className="text-xs">Kabupaten Konawe Selatan</p>
+                <div className="h-12"></div>
+                <p className="font-bold underline">H. IMADUDDIN, S.Pi., M.Si.</p>
+                <p className="text-[10px] font-mono">NIP. 19740510 199903 1 005</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setIsPrintModalOpen(false)}>
+              Tutup
+            </Button>
+            <Button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+              <Printer className="w-4 h-4 mr-2" />
+              Cetak Dokumen Portofolio (Print / PDF)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
