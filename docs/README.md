@@ -13,6 +13,8 @@ Repositori dokumen ini dibuat sebagai acuan kerja, panduan strategis, dan daftar
 | **01** | [**01_PLAN_TATA_KELOLA_DATA.md**](./01_PLAN_TATA_KELOLA_DATA.md) | **Rencana & Tahap Penanganan Data**: Strategi penguncian *Data Baseline (2021–2024)*, skema penerimaan data mutakhir *2025/2026*, perancangan filter periode, dan penanganan duplikasi data. | `Siap Dieksekusi` |
 | **02** | [**02_CHECKLIST_INOVASI_SMART_CITY.md**](./02_CHECKLIST_INOVASI_SMART_CITY.md) | **Daftar Ceklis Pembenahan Inovasi**: Evaluasi pemenuhan 9 kriteria kompetisi inovasi Smart City (aspek teknis, kelembagaan/regulasi, dampak terukur, dan bukti dukung lapangan). | `Checklist Aktif` |
 | **03** | [**03_PANDUAN_IMPORT_DATA_2025_2026.md**](./03_PANDUAN_IMPORT_DATA_2025_2026.md) | **Spesifikasi Format & Batch Import Data Baru**: Struktur kolom Excel standar, panduan validasi NIK/ID, dan prosedur impor saat data dari dinas telah diterima. | `Standar Baku` |
+| **04** | [**04_PLAN_PEMBERSIHAN_KEAMANAN_DAN_OPTIMASI.md**](./04_PLAN_PEMBERSIHAN_KEAMANAN_DAN_OPTIMASI.md) | **Rencana Pembersihan Sistem**: Urutan perbaikan keamanan, integritas data, dependensi, performa, testing, dan kesiapan produksi. | `Ditunda Sementara` |
+| **05** | [**05_PLAN_INTEGRASI_DATA_BARU_SMART_ECONOMY.md**](./05_PLAN_INTEGRASI_DATA_BARU_SMART_ECONOMY.md) | **Rencana Integrasi Data Baru**: Tahapan staging, pembersihan, rekonsiliasi, dry-run, dan import data UMKM, koperasi, serta penerima bantuan untuk kebutuhan Smart Economy. | `Prioritas Aktif` |
 
 ---
 

@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
             instansiNama: pDetails.instansi_nama || 'Dinas Koperasi dan UMKM',
             unitKerjaNama: pDetails.unit_kerja_nama || 'Kabupaten Konawe Selatan',
             role: {
-              id: '1',
-              nama: 'Administrator',
+              id: String(pDetails.menu_klp || '0'),
+              nama: pDetails.menu_klp_uraian || 'Tanpa Role',
               permissions: [],
             },
           },
@@ -42,56 +42,13 @@ export async function POST(req: NextRequest) {
       }
 
       if (!backendRes.ok) {
-        if (username === 'admin' && password === 'password123') {
-          return NextResponse.json({
-            user: {
-              id: 'admin-dinkop-1',
-              username: 'admin',
-              nama: 'Administrator Dinkop Konsel',
-              email: 'admin.dinkop@konaweselatankab.go.id',
-              nip: '198501012010011001',
-              instansiNama: 'Dinas Koperasi dan UMKM',
-              unitKerjaNama: 'Kabupaten Konawe Selatan',
-              role: {
-                id: '1',
-                nama: 'SUPER_ADMIN',
-                permissions: [],
-              },
-            },
-            accessToken: 'token-session-dinkop-konsel',
-            refreshToken: 'token-session-dinkop-konsel',
-          });
-        }
-
         return NextResponse.json(
           { message: data.message || 'Username atau password salah' },
           { status: backendRes.status || 401 }
         );
       }
     } catch (backendError) {
-      console.warn('[BackendStatistik Offline] Fallback credentials check:', backendError);
-      
-      // Fallback jika BackendStatistik belum dijalankan oleh user
-      if (username === 'admin' && password === 'password123') {
-        return NextResponse.json({
-          user: {
-            id: 'admin-fallback-1',
-            username: 'admin',
-            nama: 'Administrator Dinkop (Demo)',
-            email: 'admin.dinkop@konaweselatankab.go.id',
-            nip: '198501012010011001',
-            instansiNama: 'Dinas Koperasi dan UMKM',
-            unitKerjaNama: 'Kabupaten Konawe Selatan',
-            role: {
-              id: '1',
-              nama: 'SUPER_ADMIN',
-            },
-          },
-          accessToken: 'demo-token-dinkop-kikensbatara',
-          refreshToken: 'demo-token-dinkop-kikensbatara',
-        });
-      }
-
+      console.warn('[BackendStatistik Offline] Login tidak tersedia:', backendError);
       return NextResponse.json(
         { message: 'Gagal terhubung ke server BackendStatistik (Port 5020). Pastikan BackendStatistik sedang berjalan.' },
         { status: 503 }

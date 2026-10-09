@@ -33,8 +33,9 @@ export async function GET(req: NextRequest) {
       const total = typeof json?.total_data === 'number' ? json.total_data : totalPages * limit;
 
       const mapped = rawList.map((item: any) => {
-        const tb = item.tahun_berdiri ? Number(item.tahun_berdiri) : 2020;
-        const isBaseline = !tb || tb <= 2024;
+        const tb = item.tahun_berdiri ? Number(item.tahun_berdiri) : 0;
+        const tahunPendataan = Number(item.tahun_pendataan_aktif || item.tahun_pendataan || 2024);
+        const isBaseline = tahunPendataan <= 2024;
 
         return {
           id: String(item.id || item.nik),
@@ -45,9 +46,10 @@ export async function GET(req: NextRequest) {
           nohp: item.nohp || '-',
           kk: item.kk || '-',
           tahunBerdiri: tb,
+          tahunPendataan,
           isBaseline,
           statusData: isBaseline ? 'BASELINE' : 'PEMUTAKHIRAN',
-          periodeData: isBaseline ? '2021-2024' : String(tb),
+          periodeData: isBaseline ? '2021-2024' : String(tahunPendataan),
           nib: item.nib || '-',
           pirt: item.pirt || '-',
           halal: item.halal || '-',
@@ -70,9 +72,9 @@ export async function GET(req: NextRequest) {
           },
           modalSendiri: Number(item.modal_sendiri || 0),
           modalLuar: Number(item.modal_luar || 0),
-          modalUsaha: Number(item.modal_sendiri || item.modal || 5000000),
-          omsetTahun: Number(item.omset || item.omset_tahun || 15000000),
-          jumlahTenagaKerja: Number(item.naker || item.jumlah_tenaga_kerja || 2),
+          modalUsaha: Number(item.asset_pendataan ?? item.modal_sendiri ?? item.modal ?? 0),
+          omsetTahun: Number(item.omzet_pendataan ?? item.omset ?? item.omset_tahun ?? 0),
+          jumlahTenagaKerja: Number(item.tenaga_kerja_pendataan ?? item.naker ?? item.jumlah_tenaga_kerja ?? 0),
         };
       });
 

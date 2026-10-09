@@ -14,9 +14,11 @@ import {
   LineChart,
   ShieldCheck,
   Users,
+  UserRoundSearch,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuthStore } from "@/stores/auth-store"
+import { isAdministratorRole } from "@/lib/auth-role"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import {
@@ -114,13 +116,33 @@ const navigationData = {
           url: "/management/users",
           icon: Users,
         },
+        {
+          title: "NIK Kembar UMKM",
+          url: "/management/nik-kembar",
+          icon: UserRoundSearch,
+          administratorOnly: true,
+        },
       ],
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useAuthStore()
+  const { user, accessToken, checkAuth } = useAuthStore()
+
+  React.useEffect(() => {
+    if (accessToken) void checkAuth()
+  }, [accessToken, checkAuth])
+
+  const isAdministrator = isAdministratorRole(user?.role?.nama)
+  const visibleNavigationGroups = navigationData.navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !("administratorOnly" in item && item.administratorOnly) || isAdministrator,
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
 
   const currentUser = {
     name: user?.nama || "Administrator",
@@ -148,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {navigationData.navGroups.map((group) => (
+        {visibleNavigationGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>

@@ -8,15 +8,12 @@ import {
   Store,
   Building2,
   CheckCircle2,
-  XCircle,
   Filter,
   Plus,
   RefreshCw,
   TrendingUp,
   Printer,
-  Coins,
   Users,
-  MapPin,
   ArrowUpRight,
   PieChart as PieIcon,
   Award,
@@ -25,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -64,7 +62,7 @@ const COLORS = [
 
 export default function DashboardPage() {
   const [selectedKecamatan, setSelectedKecamatan] = useState<string>('all');
-  const [selectedTahun, setSelectedTahun] = useState<string>('all');
+  const [selectedPeriode, setSelectedPeriode] = useState<string>('all');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Fetch Kecamatan for filter
@@ -77,13 +75,13 @@ export default function DashboardPage() {
   });
 
   // Fetch Summary with filters
-  const { data: summary, isLoading, refetch } = useQuery({
-    queryKey: ['dashboard-summary', selectedKecamatan, selectedTahun],
+  const { data: summary, isLoading, isError, refetch } = useQuery({
+    queryKey: ['dashboard-summary', selectedKecamatan, selectedPeriode],
     queryFn: async () => {
       const res = await api.get('/dashboard/summary', {
         params: {
           kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
-          tahun: selectedTahun !== 'all' ? selectedTahun : undefined,
+          periode: selectedPeriode,
         },
       });
       return res.data;
@@ -91,24 +89,42 @@ export default function DashboardPage() {
   });
 
   const cards = summary?.cards || {
-    totalUmkm: 17671,
-    totalKoperasi: 326,
-    koperasiAktif: 248,
-    koperasiNonAktif: 78,
+    totalUmkm: 0,
+    totalCatatan: 0,
+    pelakuBaru: 0,
+    totalKoperasi: 0,
+    koperasiAktif: 0,
+    koperasiNonAktif: 0,
   };
 
   const umkmByKecamatan = summary?.charts?.umkmByKecamatan || [];
   const umkmByJenisUsaha = summary?.charts?.umkmByJenisUsaha || [];
   const koperasiByJenis = summary?.charts?.koperasiByJenis || [];
+  const breakdown = summary?.breakdown || {
+    baseline: 0,
+    periode2025: 0,
+    pendataanUlang2025: 0,
+    pelakuBaru2025: 0,
+    periode2026: 0,
+    pendataanUlang2026: 0,
+    pelakuBaru2026: 0,
+    totalCatatanSemuaPeriode: 0,
+  };
 
   // Top 5 Sentra Kecamatan
   const topKecamatan = [...umkmByKecamatan]
     .sort((a: any, b: any) => b.umkm - a.umkm)
     .slice(0, 5);
 
-  const totalUmkmCount = cards.totalUmkm || 17671;
-  const totalKoperasiCount = cards.totalKoperasi || 326;
-
+  const totalUmkmCount = cards.totalUmkm || 0;
+  const totalKoperasiCount = cards.totalKoperasi || 0;
+  const periodLabel = selectedPeriode === 'baseline'
+    ? 'Baseline 2021–2024'
+    : selectedPeriode === '2025'
+      ? 'Pemutakhiran 2025'
+      : selectedPeriode === '2026'
+        ? 'Pemutakhiran 2026'
+        : 'Semua Periode';
   return (
     <div className="px-4 lg:px-8 space-y-6">
       {/* Top Header & Executive Controls */}
@@ -152,18 +168,15 @@ export default function DashboardPage() {
 
           {/* Kotak Filter Tahun Statis (Lebar Pasti 130px) */}
           <div className="w-[130px] shrink-0">
-            <Select value={selectedTahun} onValueChange={setSelectedTahun}>
+            <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
               <SelectTrigger className="w-full h-9 text-xs">
-                <SelectValue placeholder="Semua Tahun" />
+                <SelectValue placeholder="Periode Data" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="text-xs">Semua Tahun</SelectItem>
-                <SelectItem value="2026" className="text-xs">Tahun 2026</SelectItem>
-                <SelectItem value="2025" className="text-xs">Tahun 2025</SelectItem>
-                <SelectItem value="2024" className="text-xs">Tahun 2024</SelectItem>
-                <SelectItem value="2023" className="text-xs">Tahun 2023</SelectItem>
-                <SelectItem value="2022" className="text-xs">Tahun 2022</SelectItem>
-                <SelectItem value="2021" className="text-xs">Tahun 2021</SelectItem>
+                <SelectItem value="all" className="text-xs">Semua Periode</SelectItem>
+                <SelectItem value="baseline" className="text-xs">Baseline (2021–2024)</SelectItem>
+                <SelectItem value="2025" className="text-xs">Pemutakhiran 2025</SelectItem>
+                <SelectItem value="2026" className="text-xs">Pemutakhiran 2026</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -209,15 +222,19 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground text-sm">
-                Basis Data Baseline Resmi (Periode 2021–2024)
+                Ringkasan Data — {periodLabel}
               </span>
               <span className="hidden sm:inline-block bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                 Terkunci & Valid
               </span>
             </div>
             <p className="text-muted-foreground mt-0.5 leading-relaxed">
-              Sebanyak <strong>{totalUmkmCount.toLocaleString('id-ID')} Pelaku UMKM</strong> dan{' '}
-              <strong>{totalKoperasiCount} Koperasi</strong> telah tervalidasi sebagai data dasar pembangunan daerah Kab. Konawe Selatan. Data tahun 2025/2026 disiapkan melalui modul import berkala.
+              {isError ? (
+                <>Ringkasan gagal dimuat. Angka tidak diganti dengan data simulasi; silakan muat ulang.</>
+              ) : (
+                <>Filter saat ini menampilkan <strong>{totalUmkmCount.toLocaleString('id-ID')} Pelaku UMKM</strong> dan{' '}
+                <strong>{totalKoperasiCount.toLocaleString('id-ID')} Koperasi</strong>. UMKM dihitung berdasarkan periode pendataan, bukan tahun berdiri.</>
+              )}
             </p>
           </div>
         </div>
@@ -237,15 +254,14 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Primary KPI Cards (4 Kolom Utama) */}
+      {/* Primary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total UMKM */}
         <Card className="border-border/60 shadow-xs hover:border-emerald-500/40 transition-colors">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Total Pelaku UMKM
+                  Pelaku Unik
                 </p>
                 <h3 className="text-3xl font-extrabold text-foreground mt-1">
                   {cards.totalUmkm.toLocaleString('id-ID')}
@@ -258,16 +274,63 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
               <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
                 <TrendingUp className="w-3 h-3 text-emerald-500" />
-                Baseline 2021–2024
+                {periodLabel}
               </span>
               <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                100% Terverifikasi NIK
+                NIK tidak dihitung ganda
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Card 2: Total Koperasi */}
+        <Card className="border-border/60 shadow-xs hover:border-blue-500/40 transition-colors">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Catatan Pendataan
+                </p>
+                <h3 className="text-3xl font-extrabold text-foreground mt-1">
+                  {cards.totalCatatan.toLocaleString('id-ID')}
+                </h3>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                <FileText className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
+              <span className="text-muted-foreground text-[11px]">Setiap periode dihitung</span>
+              <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                {periodLabel}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 shadow-xs hover:border-amber-500/40 transition-colors">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Pelaku Baru
+                </p>
+                <h3 className="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
+                  {cards.pelakuBaru.toLocaleString('id-ID')}
+                </h3>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
+              <span className="text-muted-foreground text-[11px]">Belum ada di baseline</span>
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                {periodLabel}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="border-border/60 shadow-xs hover:border-teal-500/40 transition-colors">
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
@@ -276,138 +339,55 @@ export default function DashboardPage() {
                   Total Koperasi
                 </p>
                 <h3 className="text-3xl font-extrabold text-foreground mt-1">
-                  {cards.totalKoperasi}
+                  {cards.totalKoperasi.toLocaleString('id-ID')}
                 </h3>
               </div>
               <div className="w-12 h-12 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
                 <Building2 className="w-6 h-6" />
               </div>
             </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground text-[11px]">
-                Badan Hukum Resmi Dinas
+            <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-2 text-[10px]">
+              <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                {cards.koperasiAktif} Aktif/Sehat
               </span>
-              <span className="text-[10px] font-medium text-teal-700 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded border border-teal-500/20">
-                25 Kecamatan
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 3: Koperasi Aktif */}
-        <Card className="border-border/60 shadow-xs hover:border-emerald-500/40 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Koperasi Aktif
-                </p>
-                <h3 className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">
-                  {cards.koperasiAktif}
-                </h3>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground text-[11px]">
-                Rasio Keaktifan:
-              </span>
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                76,1% (Rutin RAT)
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Card 4: Koperasi Non-Aktif */}
-        <Card className="border-border/60 shadow-xs hover:border-rose-500/40 transition-colors">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Koperasi Non-Aktif
-                </p>
-                <h3 className="text-3xl font-extrabold text-rose-500 mt-1">
-                  {cards.koperasiNonAktif}
-                </h3>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center font-bold">
-                <XCircle className="w-6 h-6" />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground text-[11px]">
-                Perlu Pendampingan:
-              </span>
-              <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-                23,9% (Target Revitalisasi)
+              <span className="rounded border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 font-semibold text-rose-600 dark:text-rose-400">
+                {cards.koperasiNonAktif} Tidak Aktif
               </span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Secondary Macroeconomic Impact Cards (3 Kolom Ringkasan Makro Daerah) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-border/60 bg-muted/20 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Coins className="w-5 h-5" />
-            </div>
+      <Card className="border-blue-500/20 bg-gradient-to-r from-blue-500/5 via-background to-emerald-500/5 shadow-xs">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase">
-                Estimasi Perputaran Omset UMKM
-              </p>
-              <h4 className="text-lg font-bold text-foreground">
-                Rp 632,6 Miliar <span className="text-xs font-normal text-muted-foreground">/ Tahun</span>
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                Dihitung dari rata-rata omset pelaku usaha mikro binaan dinas
-              </p>
+              <CardTitle className="text-base">Komposisi data per periode</CardTitle>
+              <CardDescription className="mt-1">
+                Pelaku unik menghapus duplikasi antarperiode; catatan pendataan tetap menghitung setiap kemunculan tahunan.
+              </CardDescription>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-muted/20 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase">
-                Estimasi Penyerapan Tenaga Kerja
-              </p>
-              <h4 className="text-lg font-bold text-foreground">
-                ~37.100 Orang <span className="text-xs font-normal text-muted-foreground">Pekerja Lokal</span>
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                Rata-rata 2,1 tenaga kerja terserap per unit usaha mikro/kecil
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/60 bg-muted/20 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase">
-                Cakupan Wilayah Binaan
-              </p>
-              <h4 className="text-lg font-bold text-foreground">
-                25 Kecamatan <span className="text-xs font-normal text-muted-foreground">& 351 Desa/Kel.</span>
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                100% wilayah administratif terpetakan secara presisi
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            <Badge variant="outline" className="w-fit bg-background">Filter: {periodLabel}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <PeriodMetric label="Baseline 2021–2024" value={breakdown.baseline} tone="slate" />
+            <PeriodMetric label="Snapshot 2025" value={breakdown.periode2025} tone="blue" />
+            <PeriodMetric label="Pendataan ulang 2025" value={breakdown.pendataanUlang2025} tone="emerald" />
+            <PeriodMetric label="Pelaku baru 2025" value={breakdown.pelakuBaru2025} tone="amber" />
+            <PeriodMetric label="Snapshot 2026" value={breakdown.periode2026} tone="violet" />
+          </div>
+          <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/80 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Total catatan: <strong className="text-foreground">{breakdown.baseline.toLocaleString('id-ID')} + {breakdown.periode2025.toLocaleString('id-ID')} + {breakdown.periode2026.toLocaleString('id-ID')} = {breakdown.totalCatatanSemuaPeriode.toLocaleString('id-ID')}</strong>
+            </span>
+            <span>
+              <strong className="text-foreground">{breakdown.pendataanUlang2025.toLocaleString('id-ID')}</strong> pelaku baseline muncul kembali pada 2025.
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -508,7 +488,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-1.5 max-h-[120px] overflow-y-auto text-xs pr-1">
                   {umkmByJenisUsaha.map((ju: any, idx: number) => (
-                    <div key={ju.name} className="flex items-center justify-between text-muted-foreground py-0.5">
+                    <div key={`umkm-kind-${ju.id || 'unknown'}-${idx}`} className="flex items-center justify-between text-muted-foreground py-0.5">
                       <div className="flex items-center gap-2 truncate">
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -554,7 +534,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="space-y-1.5 max-h-[120px] overflow-y-auto text-xs pr-1">
                   {koperasiByJenis.map((kop: any, idx: number) => (
-                    <div key={kop.name} className="flex items-center justify-between text-muted-foreground py-0.5">
+                    <div key={`koperasi-kind-${kop.id || 'unknown'}-${idx}`} className="flex items-center justify-between text-muted-foreground py-0.5">
                       <div className="flex items-center gap-2 truncate">
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0"
@@ -590,9 +570,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3.5">
             {topKecamatan.map((kec: any, idx: number) => {
-              const pct = ((kec.umkm / totalUmkmCount) * 100).toFixed(1);
+              const pct = totalUmkmCount > 0 ? ((kec.umkm / totalUmkmCount) * 100).toFixed(1) : '0.0';
               return (
-                <div key={kec.name} className="p-3 rounded-lg border border-border/50 bg-muted/20 space-y-1.5">
+                <div key={`top-kecamatan-${kec.id || kec.name}-${idx}`} className="p-3 rounded-lg border border-border/50 bg-muted/20 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <span className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-[11px]">
@@ -643,7 +623,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-foreground group-hover:text-emerald-600 transition-colors">
-                    Basis Data Pelaku UMKM (17.671 Data)
+                    Basis Data Pelaku UMKM ({totalUmkmCount.toLocaleString('id-ID')} Data)
                   </h4>
                   <p className="text-[11px] text-muted-foreground">
                     Filter 25 kecamatan, pencarian NIK debounced, batch import & export laporan
@@ -739,39 +719,39 @@ export default function DashboardPage() {
                 RINGKASAN EKSEKUTIF DATA UMKM & KOPERASI
               </h4>
               <p className="text-[11px] text-gray-600 mt-0.5">
-                Posisi Data Baseline Terverifikasi Periode 2021–2024
+                Posisi Data {periodLabel}
               </p>
             </div>
 
             {/* 4 Kotak KPI Cetak */}
             <div className="grid grid-cols-4 gap-3 mb-5 text-center">
               <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
-                <p className="text-[10px] text-gray-600 uppercase font-semibold">Total Pelaku UMKM</p>
+                <p className="text-[10px] text-gray-600 uppercase font-semibold">Pelaku Unik</p>
                 <p className="text-base font-extrabold text-teal-900 mt-0.5">
                   {totalUmkmCount.toLocaleString('id-ID')}
                 </p>
-                <p className="text-[9px] text-gray-500">25 Kecamatan Terjangkau</p>
+                <p className="text-[9px] text-gray-500">NIK tidak dihitung ganda</p>
+              </div>
+              <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
+                <p className="text-[10px] text-gray-600 uppercase font-semibold">Catatan Pendataan</p>
+                <p className="text-base font-extrabold text-teal-900 mt-0.5">
+                  {cards.totalCatatan.toLocaleString('id-ID')}
+                </p>
+                <p className="text-[9px] text-gray-500">Kemunculan setiap periode</p>
+              </div>
+              <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
+                <p className="text-[10px] text-gray-600 uppercase font-semibold">Pelaku Baru</p>
+                <p className="text-base font-extrabold text-amber-800 mt-0.5">
+                  {cards.pelakuBaru.toLocaleString('id-ID')}
+                </p>
+                <p className="text-[9px] text-gray-500">Belum ada di baseline</p>
               </div>
               <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
                 <p className="text-[10px] text-gray-600 uppercase font-semibold">Total Koperasi</p>
                 <p className="text-base font-extrabold text-teal-900 mt-0.5">
-                  {totalKoperasiCount}
+                  {totalKoperasiCount.toLocaleString('id-ID')}
                 </p>
-                <p className="text-[9px] text-gray-500">Badan Hukum Binaan</p>
-              </div>
-              <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
-                <p className="text-[10px] text-gray-600 uppercase font-semibold">Koperasi Aktif</p>
-                <p className="text-base font-extrabold text-emerald-800 mt-0.5">
-                  {cards.koperasiAktif} (76,1%)
-                </p>
-                <p className="text-[9px] text-gray-500">Rutin Melaksanakan RAT</p>
-              </div>
-              <div className="p-2.5 border border-gray-400 rounded bg-gray-50">
-                <p className="text-[10px] text-gray-600 uppercase font-semibold">Estimasi Omset</p>
-                <p className="text-base font-extrabold text-gray-900 mt-0.5">
-                  Rp 632,6 M
-                </p>
-                <p className="text-[9px] text-gray-500">Perputaran Ekonomi Lokal</p>
+                <p className="text-[9px] text-gray-500">{cards.koperasiAktif} aktif/sehat · {cards.koperasiNonAktif} tidak aktif</p>
               </div>
             </div>
 
@@ -795,9 +775,9 @@ export default function DashboardPage() {
                     .sort((a: any, b: any) => b.umkm - a.umkm)
                     .slice(0, 10)
                     .map((item: any, idx: number) => {
-                      const share = ((item.umkm / totalUmkmCount) * 100).toFixed(1);
+                      const share = totalUmkmCount > 0 ? ((item.umkm / totalUmkmCount) * 100).toFixed(1) : '0.0';
                       return (
-                        <tr key={item.name} className="border-b border-gray-300">
+                        <tr key={`print-kecamatan-${item.id || item.name}-${idx}`} className="border-b border-gray-300">
                           <td className="p-1.5 border-r border-gray-300 text-center">{idx + 1}</td>
                           <td className="p-1.5 border-r border-gray-300 font-medium">{item.name}</td>
                           <td className="p-1.5 border-r border-gray-300 text-right font-mono">
@@ -842,6 +822,31 @@ export default function DashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function PeriodMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'slate' | 'blue' | 'emerald' | 'amber' | 'violet';
+}) {
+  const toneClasses = {
+    slate: 'border-slate-500/20 bg-slate-500/5 text-slate-700 dark:text-slate-300',
+    blue: 'border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-300',
+    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300',
+    amber: 'border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300',
+    violet: 'border-violet-500/20 bg-violet-500/5 text-violet-700 dark:text-violet-300',
+  };
+
+  return (
+    <div className={`rounded-lg border p-3 ${toneClasses[tone]}`}>
+      <p className="text-[11px] font-medium opacity-80">{label}</p>
+      <p className="mt-1 text-xl font-bold tabular-nums">{value.toLocaleString('id-ID')}</p>
     </div>
   );
 }
