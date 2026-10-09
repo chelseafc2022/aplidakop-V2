@@ -55,8 +55,8 @@ Dokumen ini memetakan kelengkapan sistem **APLI DAKOP v2.0** terhadap **9 Kriter
 - [x] Manajemen state server menggunakan **TanStack React Query v5** dengan fitur caching (`keepPreviousData`), menghilangkan lag saat navigasi 17rb data.
 - [x] Backend API terintegrasi MySQL Pool di Node.js Express Port 5020.
 - [x] Desain antarmuka responsif ramah gawai (*mobile-friendly*) menggunakan Tailwind CSS dan komponen Shadcn UI.
-- [ ] **Yang Harus Dibenahi / Disiapkan**:
-  - [ ] Tambahkan tombol export data ke format Excel (`.xlsx`) dan PDF rekapitulasi laporan ber-kop dinas di halaman [Pelaku UMKM](file:///Users/simplephi/Documents/riswan/aplidakop_v2/frontend/src/app/%28dashboard%29/pelaku-umkm/page.tsx).
+- [x] **Yang Telah Dibenahi / Disiapkan**:
+  - [x] Tambahkan tombol export data ke format Excel (`.xlsx` / `.csv`) dan PDF/Print rekapitulasi laporan ber-kop dinas di halaman [Pelaku UMKM](file:///Users/simplephi/Documents/riswan/aplidakop_v2/frontend/src/app/%28dashboard%29/pelaku-umkm/page.tsx).
 
 ---
 

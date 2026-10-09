@@ -134,6 +134,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Baseline Status Notice */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>
+            <strong>Basis Data Baseline Terverifikasi (Periode 2021–2024)</strong>: Sebanyak 17.671 pelaku UMKM dan 326 Koperasi terkunci sebagai tahun dasar resmi inovasi daerah. Data 2025/2026 disiapkan melalui modul impor berkala.
+          </span>
+        </div>
+        <Link
+          href="/pelaku-umkm"
+          className="text-emerald-600 dark:text-emerald-400 font-medium hover:underline flex items-center gap-1 shrink-0"
+        >
+          Buka Data Pelaku UMKM →
+        </Link>
+      </div>
+
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-border/60 shadow-xs hover:border-emerald-500/40 transition-colors">
@@ -151,10 +167,15 @@ export default function DashboardPage() {
                 <Store className="w-6 h-6" />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-              Pelaku usaha terverifikasi
-            </p>
+            <div className="flex items-center justify-between mt-3 text-xs">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                Baseline 2021–2024
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                Terkunci & Sah
+              </span>
+            </div>
           </CardContent>
         </Card>
 

@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.resolve(__dirname),
   experimental: {
-    optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
+    optimizePackageImports: ["lucide-react"],
   },
-  turbopack: {},
 
   // Image optimization
   images: {

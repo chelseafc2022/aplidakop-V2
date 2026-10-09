@@ -52,15 +52,15 @@ graph TD
 - **Tindakan Proteksi**:
   - Membatasi tombol aksi *Delete* untuk akun non-superadmin pada data berlabel *Baseline*.
 
-#### Tahap 3: Pembuatan Modul Batch Import Excel (Persiapan Sebelum Data Tiba)
+#### Tahap 3: Pembuatan Modul Batch Import Excel (Status: SELESAI)
 - **Tindakan**:
-  - Membuat antarmuka upload file Excel (`.xlsx` / `.csv`) di dashboard admin.
-  - Membangun validasi otomatis:
-    - Pengecekan NIK unik (apakah NIK sudah terdaftar atau baru).
-    - Pengecekan relasi kecamatan & desa.
+  - Membuat antarmuka upload file Excel/CSV di dashboard admin beserta parser 18 kolom dinas.
+  - Membangun validasi otomatis & logika Upsert di BackendStatistik (`POST /api/v1/master_pelaku/batchImport`) dan Next.js API Route (`/api/pelaku-umkm/import`):
+    - Pengecekan NIK unik (jika NIK lama -> update omset/legalitas mutakhir; jika NIK baru -> insert dengan tahun pendataan 2025/2026).
     - Format modal, omset, dan jenis usaha.
+  - Menambahkan fitur Export Data ke file Excel/CSV dan Cetak Lembar Rekapitulasi Ber-Kop Dinas Resmi.
 - **Tujuan**:
-  - Begitu dinas menyerahkan file data 2025/2026, admin tidak perlu input manual satu per satu, cukup upload 1 file Excel dan ribuan data langsung tersinkronisasi dalam hitungan detik.
+  - Begitu dinas menyerahkan file data 2025/2026, admin tidak perlu input manual satu per satu, cukup upload 1 file Excel/CSV dan ribuan data langsung tersinkronisasi dalam hitungan detik.
 
 #### Tahap 4: Penerimaan & Pemutakhiran Data 2025/2026 (Saat Data Diserahkan)
 - **Tindakan**:

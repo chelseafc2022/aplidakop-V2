@@ -80,14 +80,15 @@ export default function InovasiSmartCityPage() {
       category: 'Kematangan Teknis',
       urgency: 'Wajib',
       pemenuhan:
-        'Sistem telah aktif beroperasi di server Pemerintah Daerah dan kini dimutakhirkan ke APLI DAKOP v2.0 secara live. Data riil 17.671 pelaku UMKM dan 326 koperasi telah terhimpun dan tersinkronisasi dari 25 kecamatan se-Kabupaten Konawe Selatan.',
+        'Sistem telah aktif beroperasi di server Pemerintah Daerah dan kini dimutakhirkan ke APLI DAKOP v2.0 secara live. Sebanyak 17.671 data riil pelaku UMKM dan 326 koperasi berstatus sebagai Baseline Terverifikasi (2021–2024) yang terkunci dan terlindungi, didukung modul pemutakhiran terpadu untuk data monitoring tahun 2025/2026.',
       buktiDukung: [
         'Aplikasi live beroperasi penuh terhubung ke database terintegrasi db_dinkop dan egov.',
-        'Data 17.671 pelaku usaha mikro dan 326 koperasi aktif terinput dan diverifikasi berkala.',
+        'Data 17.671 pelaku usaha mikro dan 326 koperasi berstatus Baseline Terverifikasi (2021–2024) dengan proteksi data audit trail.',
+        'Modul pemutakhiran data berkala (batch import Excel & dependent filter desa) untuk menyerap data monitoring tahun 2025/2026.',
         'Riwayat log transaksi dan audit trail pengguna dinas & kecamatan.',
       ],
-      quickLink: '/dashboard',
-      quickLinkLabel: 'Buka Dashboard Live',
+      quickLink: '/pelaku-umkm',
+      quickLinkLabel: 'Buka Data Baseline UMKM',
     },
     {
       id: 2,
