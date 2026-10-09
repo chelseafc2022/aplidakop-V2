@@ -132,25 +132,25 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, username, email, hp, roleId } = body;
+    const { id, roleId, username, email, hp } = body;
 
     const res = await fetchFromBackend('/api/v1/registrasiAplidakop/editData', {
       method: 'POST',
       body: JSON.stringify({
         id: id,
-        username: username,
-        email: email,
-        hp: hp,
-        menu_klp: Number(roleId) || 1,
+        menu_klp: Number(roleId) || 0,
+        username: username || undefined,
+        email: email || undefined,
+        hp: hp || undefined,
       }),
     });
 
     if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Hak akses & profil pengguna berhasil diperbarui' });
+      return NextResponse.json({ success: true, message: 'Hak akses (role) pengguna berhasil diperbarui' });
     }
 
     const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal memperbarui data pengguna' }, { status: 500 });
+    return NextResponse.json({ message: text || 'Gagal memperbarui role pengguna' }, { status: 500 });
   } catch (err: any) {
     console.error('[Management Users PUT] Error:', err);
     return NextResponse.json({ message: err.message || 'Internal Server Error' }, { status: 500 });

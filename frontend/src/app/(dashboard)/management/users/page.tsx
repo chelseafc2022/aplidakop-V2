@@ -1,31 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { toast } from 'sonner';
 import {
-  Users,
-  UserPlus,
-  KeyRound,
-  Shield,
-  Pencil,
-  Trash2,
-  Mail,
-  Phone,
+  Users as UsersIcon,
   Search,
-  Filter,
-  Building,
-  Briefcase,
+  FilterX,
+  RefreshCw,
+  Edit3,
+  UserX,
+  UserPlus,
+  Loader2,
   ChevronLeft,
   ChevronRight,
+  Database,
   ShieldCheck,
+  Building2,
+  Layers,
   CheckCircle2,
+  Mail,
+  Phone,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -34,58 +35,39 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { SearchableCombobox } from '@/components/searchable-combobox';
+import { StatCards } from './components/stat-cards';
+import { SetRoleDialog, TargetPegawai } from './components/set-role-dialog';
+import { RevokeRoleDialog } from './components/revoke-role-dialog';
 
 export default function ManagementUsersPage() {
-  const queryClient = useQueryClient();
+  // Tabs: "active_users" (Pengguna Memiliki Role) vs "egov_directory" (Direktori Seluruh Akun E-Gov)
+  const [activeTab, setActiveTab] = useState<string>('active_users');
 
-  // State Filters
-  const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(10);
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  // Search & Filter state
+  const [search, setSearch] = useState<string>('');
   const [selectedInstansi, setSelectedInstansi] = useState<string>('');
   const [selectedUnitKerja, setSelectedUnitKerja] = useState<string>('all');
-  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('true'); // Default: sudah memiliki role
+  const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
-  // State Dialogs
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isResetOpen, setIsResetOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  // Pagination states
+  const [pageUsers, setPageUsers] = useState<number>(1);
+  const [pageDirectory, setPageDirectory] = useState<number>(1);
 
-  const [newUser, setNewUser] = useState({
-    username: '',
-    password: '',
-    nama: '',
-    nip: '',
-    email: '',
-    hp: '',
-    roleId: '',
-    unitKerjaId: '',
-  });
-
-  const [editFormData, setEditFormData] = useState({
-    id: '',
-    username: '',
-    nama: '',
-    email: '',
-    hp: '',
-    roleId: '',
-    unitKerjaId: '',
-  });
-
-  const [newPassword, setNewPassword] = useState('');
+  // Dialog states
+  const [setRoleOpen, setSetRoleOpen] = useState(false);
+  const [revokeRoleOpen, setRevokeRoleOpen] = useState(false);
+  const [targetPegawai, setTargetPegawai] = useState<TargetPegawai | null>(null);
 
   // 1. Ambil daftar Instansi (OPD Induk)
-  const { data: instansiList } = useQuery({
+  const { data: instansiList = [] } = useQuery({
     queryKey: ['instansi-list'],
     queryFn: async () => (await api.get('/management/users/instansi')).data,
   });
@@ -99,13 +81,13 @@ export default function ManagementUsersPage() {
       if (dinkop) {
         setSelectedInstansi(String(dinkop.id));
       } else {
-        setSelectedInstansi(String(instansiList[0].id));
+        setSelectedInstansi('all');
       }
     }
   }, [instansiList, selectedInstansi]);
 
   // 2. Ambil daftar Sub Unit Kerja berdasarkan instansi terpilih
-  const { data: unitKerjaList } = useQuery({
+  const { data: unitKerjaList = [], isLoading: isLoadingUnitKerja } = useQuery({
     queryKey: ['unit-kerja-list', selectedInstansi],
     queryFn: async () => {
       const res = await api.get('/management/users/unit-kerja', {
@@ -117,116 +99,138 @@ export default function ManagementUsersPage() {
   });
 
   // 3. Ambil daftar kelompok role (dari db_dinkop.menu_klp)
-  const { data: roles } = useQuery({
+  const { data: roles = [] } = useQuery({
     queryKey: ['management-roles'],
     queryFn: async () => (await api.get('/management/roles')).data,
   });
 
-  // 4. Ambil data users dengan query params lengkap
-  const { data: usersResponse, isLoading } = useQuery({
+  // 4. Tab 1: Fetch Pengguna Memiliki Role APLI DAKOP (hasRole = 'true')
+  const {
+    data: activeUsersResponse,
+    isLoading: isLoadingUsers,
+    isFetching: isFetchingUsers,
+    refetch: refetchUsers,
+  } = useQuery({
     queryKey: [
-      'management-users',
-      page,
-      limit,
-      searchTerm,
+      'management-users-active',
+      pageUsers,
+      search,
       selectedInstansi,
       selectedUnitKerja,
-      selectedRoleFilter,
+      roleFilter,
     ],
     queryFn: async () => {
       const res = await api.get('/management/users', {
         params: {
-          page,
-          limit,
-          search: searchTerm,
+          page: pageUsers,
+          limit: 10,
+          search: search || undefined,
           instansiId: selectedInstansi !== 'all' ? selectedInstansi : undefined,
           unitKerjaId: selectedUnitKerja !== 'all' ? selectedUnitKerja : undefined,
-          hasRole: selectedRoleFilter,
+          hasRole: 'true',
         },
       });
       return res.data;
     },
   });
 
-  const users = usersResponse?.data || [];
-  const totalUsers = usersResponse?.total || 0;
-  const totalPages = usersResponse?.totalPages || 1;
-
-  // Mutations
-  const createUserMutation = useMutation({
-    mutationFn: (data: any) => api.post('/management/users', data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-users'] });
-      toast.success('Pengguna baru berhasil diregistrasi');
-      setIsAddOpen(false);
-      setNewUser({
-        username: '',
-        password: '',
-        nama: '',
-        nip: '',
-        email: '',
-        hp: '',
-        roleId: '',
-        unitKerjaId: '',
+  // 5. Tab 2: Fetch Seluruh Direktori Akun E-Gov & SIMPEG (hasRole = 'all')
+  const {
+    data: directoryResponse,
+    isLoading: isLoadingDirectory,
+    isFetching: isFetchingDirectory,
+    refetch: refetchDirectory,
+  } = useQuery({
+    queryKey: [
+      'management-users-directory',
+      pageDirectory,
+      search,
+      selectedInstansi,
+      selectedUnitKerja,
+    ],
+    queryFn: async () => {
+      const res = await api.get('/management/users', {
+        params: {
+          page: pageDirectory,
+          limit: 10,
+          search: search || undefined,
+          instansiId: selectedInstansi !== 'all' ? selectedInstansi : undefined,
+          unitKerjaId: selectedUnitKerja !== 'all' ? selectedUnitKerja : undefined,
+          hasRole: 'all',
+        },
       });
+      return res.data;
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mendaftarkan pengguna baru'),
   });
 
-  const editUserMutation = useMutation({
-    mutationFn: (data: any) => api.put('/management/users', data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-users'] });
-      toast.success('Data pengguna & hak akses berhasil diperbarui');
-      setIsEditOpen(false);
+  // 6. Query ringkasan statistik (Akun Tanpa Role Dinkop)
+  const { data: unassignedDinkopResponse } = useQuery({
+    queryKey: ['management-users-unassigned-dinkop', selectedInstansi],
+    queryFn: async () => {
+      const res = await api.get('/management/users', {
+        params: {
+          page: 1,
+          limit: 1,
+          instansiId: selectedInstansi !== 'all' ? selectedInstansi : undefined,
+          hasRole: 'false',
+        },
+      });
+      return res.data;
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mengubah data pengguna'),
+    enabled: !!selectedInstansi,
   });
 
-  const resetPasswordMutation = useMutation({
-    mutationFn: ({ userId, password }: { userId: string; password: string }) =>
-      api.post('/management/users/reset-password', { userId, password }),
-    onSuccess: () => {
-      toast.success('Password pengguna berhasil diubah');
-      setIsResetOpen(false);
-      setNewPassword('');
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal mereset password'),
-  });
+  const activeUsers = activeUsersResponse?.data || [];
+  const totalActiveUsers = activeUsersResponse?.total || 0;
+  const totalPagesUsers = activeUsersResponse?.totalPages || 1;
 
-  const deleteUserMutation = useMutation({
-    mutationFn: (id: string) => api.delete('/management/users', { data: { id } }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['management-users'] });
-      toast.success('Pengguna berhasil dihapus');
-      setIsDeleteOpen(false);
-    },
-    onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus pengguna'),
-  });
+  const directoryUsers = directoryResponse?.data || [];
+  const totalDirectory = directoryResponse?.total || 0;
+  const totalPagesDirectory = directoryResponse?.totalPages || 1;
 
-  const handleOpenEdit = (user: any) => {
-    setSelectedUser(user);
-    setEditFormData({
-      id: user.id,
-      username: user.username,
-      nama: user.nama,
-      email: user.email,
-      hp: user.hp || '',
-      roleId: String(user.role?.id || '1'),
-      unitKerjaId: String(user.unitKerjaId || ''),
+  const totalUnassignedDinkop = unassignedDinkopResponse?.total || 0;
+
+  // Options Combobox
+  const instansiOptions = useMemo(() => {
+    return (instansiList || []).map((ins: any) => ({
+      id: String(ins.id),
+      label: ins.nama,
+    }));
+  }, [instansiList]);
+
+  const unitKerjaOptions = useMemo(() => {
+    return (unitKerjaList || []).map((uk: any) => ({
+      id: String(uk.id),
+      label: uk.nama,
+    }));
+  }, [unitKerjaList]);
+
+  const handleOpenSetRole = (item: any) => {
+    setTargetPegawai({
+      id: item.id,
+      nip: item.nip,
+      nama: item.nama,
+      username: item.username,
+      email: item.email,
+      hp: item.hp,
+      unitKerjaNama: item.unitKerjaNama,
+      instansiNama: item.instansiNama,
+      currentRole: item.role,
+      hasRole: item.hasRole,
     });
-    setIsEditOpen(true);
+    setSetRoleOpen(true);
   };
 
-  const handleOpenReset = (user: any) => {
-    setSelectedUser(user);
-    setNewPassword('');
-    setIsResetOpen(true);
-  };
-
-  const handleOpenDelete = (user: any) => {
-    setSelectedUser(user);
-    setIsDeleteOpen(true);
+  const handleOpenRevokeRole = (item: any) => {
+    setTargetPegawai({
+      id: item.id,
+      nip: item.nip,
+      nama: item.nama,
+      username: item.username,
+      currentRole: item.role,
+      hasRole: item.hasRole,
+    });
+    setRevokeRoleOpen(true);
   };
 
   return (
@@ -234,590 +238,572 @@ export default function ManagementUsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
         <div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-teal-600 dark:text-teal-400 border-teal-500/30 text-xs">
-              <Users className="w-3.5 h-3.5 mr-1" />
-              Autentikasi & Akun Pegawai
-            </Badge>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-foreground">
-            Registrasi & Manajemen Pengguna
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Manajemen Akun & Hak Akses
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Kelola akun operator dinas dan kewilayahan berbasis unit kerja, sub-unit kerja, dan penugasan role RBAC
+            Pengelolaan pengguna dan registrasi penetapan hak akses role RBAC APLI DAKOP terintegrasi direktori server E-Gov & SIMPEG Konawe Selatan
           </p>
         </div>
-
-        <Button onClick={() => setIsAddOpen(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs shrink-0">
-          <UserPlus className="w-4 h-4 mr-1.5" />
-          Tambah Pengguna Baru
-        </Button>
       </div>
 
-      {/* Filter Bar Terpadu (Unit Kerja, Sub-Unit Kerja, Status Role, & Search) */}
-      <Card className="border-border/60 shadow-xs">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Filter 1: Unit Kerja (Instansi OPD) */}
-            <div className="w-full sm:w-[220px] shrink-0">
-              <Label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Unit Kerja / Instansi
-              </Label>
-              <Select
-                value={selectedInstansi}
-                onValueChange={(val) => {
-                  setSelectedInstansi(val);
-                  setSelectedUnitKerja('all');
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <Building className="w-3.5 h-3.5 mr-1 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="Pilih Instansi" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">Semua Instansi Pemerintah</SelectItem>
-                  {instansiList?.map((inst: any) => (
-                    <SelectItem key={inst.id} value={String(inst.id)} className="text-xs">
-                      {inst.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Top Stat Cards */}
+      <StatCards
+        totalPegawai={totalDirectory}
+        totalDinkopUsers={totalActiveUsers}
+        totalUnassignedDinkop={totalUnassignedDinkop}
+        totalOpd={instansiList.length || 38}
+        isLoading={isLoadingUsers && isLoadingDirectory}
+      />
 
-            {/* Filter 2: Sub-Unit Kerja (Bidang) */}
-            <div className="w-full sm:w-[230px] shrink-0">
-              <Label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Sub-Unit Kerja / Bidang
-              </Label>
-              <Select
-                value={selectedUnitKerja}
-                onValueChange={(val) => {
-                  setSelectedUnitKerja(val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <Briefcase className="w-3.5 h-3.5 mr-1 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="Semua Sub-Unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">Semua Sub-Unit Kerja</SelectItem>
-                  {unitKerjaList?.map((uk: any) => (
-                    <SelectItem key={uk.id} value={String(uk.id)} className="text-xs">
-                      {uk.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Filter 3: Status Penugasan Role (Default: Sudah Memiliki Role) */}
-            <div className="w-full sm:w-[210px] shrink-0">
-              <Label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Status Role (Otorisasi)
-              </Label>
-              <Select
-                value={selectedRoleFilter}
-                onValueChange={(val) => {
-                  setSelectedRoleFilter(val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
-                  <SelectValue placeholder="Status Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true" className="text-xs">
-                    Sudah Punya Role (Dinkop)
-                  </SelectItem>
-                  <SelectItem value="all" className="text-xs">
-                    Semua Akun (Seluruh Master)
-                  </SelectItem>
-                  <SelectItem value="false" className="text-xs">
-                    Belum Memiliki Role
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Filter 4: Pencarian Nama / Username */}
-            <div className="flex-1 min-w-[200px]">
-              <Label className="text-[11px] font-medium text-muted-foreground block mb-1">
-                Pencarian Pengguna
-              </Label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
-                <Input
-                  placeholder="Cari nama pegawai, NIP, username..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-9 h-9 text-xs"
-                />
-              </div>
-            </div>
+      {/* Main Tabs Container */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          setActiveTab(val);
+          setSearch('');
+        }}
+        className="space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-3">
+          {/* TabsList */}
+          <div className="overflow-x-auto pb-0.5 -mx-1 px-1">
+            <TabsList className="bg-muted/60 p-1 flex w-max min-w-full sm:w-auto sm:min-w-0">
+              <TabsTrigger value="active_users" className="gap-1.5 text-xs whitespace-nowrap">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span className="hidden sm:inline">Pengguna Aktif APLI DAKOP</span>
+                <span className="sm:hidden">Pengguna Aktif</span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                  {totalActiveUsers}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="egov_directory" className="gap-1.5 text-xs whitespace-nowrap">
+                <Database className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                <span className="hidden sm:inline">Direktori Akun E-Gov & SIMPEG</span>
+                <span className="sm:hidden">Direktori E-Gov</span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 ml-1">
+                  {totalDirectory}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Tabel Pengguna */}
-      <Card className="border-border/60 shadow-xs">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-muted/50 uppercase text-[11px] font-semibold text-muted-foreground border-b border-border/40">
-                <tr>
-                  <th className="px-4 py-3 text-center w-12">No</th>
-                  <th className="px-4 py-3">Nama Pegawai & NIP</th>
-                  <th className="px-4 py-3">Username & Kontak</th>
-                  <th className="px-4 py-3">Unit & Sub-Unit Kerja</th>
-                  <th className="px-4 py-3 text-center">Kelompok Role (RBAC)</th>
-                  <th className="px-4 py-3 text-center w-36">#Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-muted-foreground">
-                      Memuat data pengguna dari database...
-                    </td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-muted-foreground">
-                      Tidak ada akun pengguna yang sesuai dengan filter yang dipilih.
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((u: any, idx: number) => (
-                    <tr key={u.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-center font-mono text-muted-foreground">
-                        {(page - 1) * limit + idx + 1}.
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground text-xs">{u.nama}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                          NIP: {u.nip || '-'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded inline-block">
-                          @{u.username}
-                        </span>
-                        <div className="flex items-center gap-1.5 text-muted-foreground mt-1">
-                          <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="truncate text-[11px]">{u.email}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-foreground text-xs">
-                          {u.unitKerjaNama && u.unitKerjaNama !== '-'
-                            ? u.unitKerjaNama
-                            : 'Sub-Unit Belum Diatur'}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                          {u.instansiNama}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {u.hasRole ? (
-                          <Badge
-                            variant="secondary"
-                            className="font-medium text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                          >
-                            <Shield className="w-3 h-3 mr-1 text-emerald-600" />
-                            {u.role?.nama}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground text-[10px]">
-                            Belum Ada Role
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Tombol Ganti Password */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Ubah Password"
-                            onClick={() => handleOpenReset(u)}
-                            className="h-7 w-7 p-0 text-emerald-600 hover:bg-emerald-500/10"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (activeTab === 'active_users') refetchUsers();
+              else refetchDirectory();
+            }}
+            disabled={isFetchingUsers || isFetchingDirectory}
+            className="text-xs h-8 gap-1.5 self-end sm:self-auto shrink-0"
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${
+                isFetchingUsers || isFetchingDirectory ? 'animate-spin' : ''
+              }`}
+            />
+            <span className="hidden sm:inline">Segarkan Data</span>
+          </Button>
+        </div>
 
-                          {/* Tombol Edit Profil & Role */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Ubah Data & Role"
-                            onClick={() => handleOpenEdit(u)}
-                            className="h-7 w-7 p-0 text-amber-600 hover:bg-amber-500/10"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
+        {/* ========================================================= */}
+        {/* TAB 1: PENGGUNA AKTIF APLI DAKOP                         */}
+        {/* ========================================================= */}
+        <TabsContent value="active_users" className="space-y-4 m-0">
+          <Card className="border-border/60 shadow-xs">
+            <CardHeader className="p-4 sm:p-5 border-b border-border/50 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    Daftar Akun Pengguna APLI DAKOP
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Akun yang telah memiliki penetapan hak akses role di Dinas Koperasi dan UKM Kab. Konawe Selatan
+                  </CardDescription>
+                </div>
 
-                          {/* Tombol Hapus User */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Hapus Pengguna"
-                            onClick={() => handleOpenDelete(u)}
-                            className="h-7 w-7 p-0 text-rose-600 hover:bg-rose-500/10"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                {(selectedInstansi !== 'all' || selectedUnitKerja !== 'all' || search) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedInstansi('all');
+                      setSelectedUnitKerja('all');
+                      setSearch('');
+                      setPageUsers(1);
+                    }}
+                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 self-start sm:self-auto"
+                    title="Reset Semua Filter"
+                  >
+                    <FilterX className="h-3.5 w-3.5" />
+                    Reset Filter
+                  </Button>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          <div className="p-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-            <div>
-              Menampilkan{' '}
-              <strong className="text-foreground">
-                {users.length > 0 ? (page - 1) * limit + 1 : 0}
-              </strong>{' '}
-              sampai{' '}
-              <strong className="text-foreground">
-                {Math.min(page * limit, totalUsers)}
-              </strong>{' '}
-              dari <strong className="text-foreground">{totalUsers}</strong> akun pengguna
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                className="h-8 text-xs"
-              >
-                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                Sebelumnya
-              </Button>
-              <span className="text-xs px-2 font-mono">
-                Halaman {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="h-8 text-xs"
-              >
-                Selanjutnya
-                <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Dialog Registrasi Pengguna Baru */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-emerald-600">
-              <UserPlus className="w-5 h-5" />
-              <DialogTitle>Registrasi Pengguna Baru</DialogTitle>
-            </div>
-            <DialogDescription className="text-xs">
-              Daftarkan akun pegawai baru dan tetapkan sub-unit kerja serta kelompok role RBAC-nya.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3.5 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Username *</Label>
-                <Input
-                  placeholder="operator_konsel"
-                  value={newUser.username}
-                  onChange={(e) =>
-                    setNewUser({
-                      ...newUser,
-                      username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-                    })
-                  }
-                  className="h-9 text-xs font-mono"
-                  required
-                />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Password *</Label>
-                <Input
-                  type="password"
-                  placeholder="Min. 6 karakter"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="h-9 text-xs"
-                  required
-                />
+
+              {/* Toolbar Filter Tab 1 */}
+              <div className="space-y-3 pt-1">
+                {/* Baris 1: Pencarian */}
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari NIP, nama pegawai, atau username..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPageUsers(1);
+                    }}
+                    className="pl-8 text-xs h-9 bg-background w-full"
+                  />
+                </div>
+
+                {/* Baris 2: Sejajar 2 Kolom Unit Kerja & Sub Unit Kerja */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="w-full">
+                    <SearchableCombobox
+                      value={selectedInstansi}
+                      onValueChange={(val) => {
+                        setSelectedInstansi(val);
+                        setSelectedUnitKerja('all');
+                        setPageUsers(1);
+                      }}
+                      items={instansiOptions}
+                      placeholder="Pilih Unit Kerja (OPD)..."
+                      searchPlaceholder="Ketik nama Unit Kerja / OPD..."
+                      emptyText="Unit Kerja tidak ditemukan."
+                      allLabel="-- Semua Unit Kerja (OPD) --"
+                      icon={<Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+                    />
+                  </div>
+
+                  <div className="w-full">
+                    <SearchableCombobox
+                      value={selectedUnitKerja}
+                      onValueChange={(val) => {
+                        setSelectedUnitKerja(val);
+                        setPageUsers(1);
+                      }}
+                      items={unitKerjaOptions}
+                      placeholder={isLoadingUnitKerja ? 'Memuat Sub Unit...' : 'Pilih Sub-Unit Kerja...'}
+                      searchPlaceholder="Ketik nama Sub Unit Kerja..."
+                      emptyText="Sub Unit Kerja tidak ditemukan."
+                      allLabel="-- Semua Sub-Unit Kerja --"
+                      icon={<Layers className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
+                      disabled={isLoadingUnitKerja}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            </CardHeader>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Nama Lengkap Pegawai *</Label>
-              <Input
-                placeholder="Contoh: Muhammad Riswan, S.Kom"
-                value={newUser.nama}
-                onChange={(e) => setNewUser({ ...newUser, nama: e.target.value })}
-                className="h-9 text-xs"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">NIP / Identitas</Label>
-                <Input
-                  placeholder="19850101..."
-                  value={newUser.nip}
-                  onChange={(e) => setNewUser({ ...newUser, nip: e.target.value })}
-                  className="h-9 text-xs font-mono"
-                />
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table className="w-full border-collapse">
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="border-b border-border/40">
+                      <TableHead className="text-xs font-semibold w-12 text-center">No</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[180px]">Pegawai & NIP</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[170px]">Username & Kontak</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[210px]">Unit / Sub-Unit Kerja</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[150px]">Hak Akses (Role)</TableHead>
+                      <TableHead className="text-xs font-semibold text-center w-28">Status</TableHead>
+                      <TableHead className="text-xs font-semibold text-right min-w-[150px] pr-4">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingUsers ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-32 text-center">
+                          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                            <span className="text-xs">Memuat data pengguna aktif...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : activeUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <UsersIcon className="h-8 w-8 stroke-1 text-muted-foreground" />
+                            <span className="text-sm font-medium">Tidak ada pengguna aktif</span>
+                            <span className="text-xs text-muted-foreground">
+                              {search
+                                ? `Tidak ditemukan data dengan kata kunci "${search}"`
+                                : 'Buka tab "Direktori Akun E-Gov" untuk menetapkan role bagi pegawai.'}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      activeUsers.map((u: any, idx: number) => (
+                        <TableRow key={u.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                            {(pageUsers - 1) * 10 + idx + 1}.
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <div className="font-semibold text-xs text-foreground leading-snug">
+                              {u.nama}
+                            </div>
+                            <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                              NIP. {u.nip || '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <span className="font-mono text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded inline-block">
+                              @{u.username}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-muted-foreground mt-1 text-[11px]">
+                              <Mail className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{u.email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <div className="text-xs font-medium text-foreground">
+                              {u.unitKerjaNama || '-'}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {u.instansiNama}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <Badge
+                              variant="secondary"
+                              className="font-medium text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                            >
+                              <ShieldCheck className="w-3 h-3 mr-1 text-emerald-600" />
+                              {u.role?.nama}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 align-top text-center">
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] gap-1 py-0 px-2 font-medium">
+                              <CheckCircle2 className="h-3 w-3" /> Aktif
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 text-right align-top pr-4">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenSetRole(u)}
+                                className="h-7 px-2.5 text-xs gap-1 whitespace-nowrap"
+                              >
+                                <Edit3 className="h-3 w-3" />
+                                Ubah Role
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleOpenRevokeRole(u)}
+                                className="h-7 px-2 text-xs text-rose-600 hover:bg-rose-500/10 hover:text-rose-700"
+                                title="Cabut Akses Role"
+                              >
+                                <UserX className="h-3 w-3" />
+                                Cabut
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">No. Handphone / WA</Label>
-                <Input
-                  placeholder="08123456789"
-                  value={newUser.hp}
-                  onChange={(e) => setNewUser({ ...newUser, hp: e.target.value })}
-                  className="h-9 text-xs font-mono"
-                />
+
+              {/* Pagination Tab 1 */}
+              <div className="p-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div>
+                  Menampilkan{' '}
+                  <strong className="text-foreground">
+                    {activeUsers.length > 0 ? (pageUsers - 1) * 10 + 1 : 0}
+                  </strong>{' '}
+                  sampai{' '}
+                  <strong className="text-foreground">
+                    {Math.min(pageUsers * 10, totalActiveUsers)}
+                  </strong>{' '}
+                  dari <strong className="text-foreground">{totalActiveUsers}</strong> pengguna aktif
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pageUsers <= 1}
+                    onClick={() => setPageUsers((p) => Math.max(p - 1, 1))}
+                    className="h-8 text-xs"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                    Sebelumnya
+                  </Button>
+                  <span className="text-xs px-2 font-mono">
+                    Halaman {pageUsers} / {totalPagesUsers}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pageUsers >= totalPagesUsers}
+                    onClick={() => setPageUsers((p) => p + 1)}
+                    className="h-8 text-xs"
+                  >
+                    Selanjutnya
+                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Email Pegawai</Label>
-              <Input
-                type="email"
-                placeholder="nama@konaweselatankab.go.id"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                className="h-9 text-xs"
-              />
-            </div>
+        {/* ========================================================= */}
+        {/* TAB 2: DIREKTORI SELURUH AKUN E-GOV & SIMPEG             */}
+        {/* ========================================================= */}
+        <TabsContent value="egov_directory" className="space-y-4 m-0">
+          <Card className="border-border/60 shadow-xs">
+            <CardHeader className="p-4 sm:p-5 border-b border-border/50 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    Direktori Akun Pegawai ASN E-Gov
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Daftar seluruh akun ASN Pemerintah Kabupaten Konawe Selatan untuk penugasan & registrasi hak akses role APLI DAKOP
+                  </CardDescription>
+                </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Sub-Unit Kerja / Bidang *</Label>
-              <Select
-                value={newUser.unitKerjaId}
-                onValueChange={(val) => setNewUser({ ...newUser, unitKerjaId: val })}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <SelectValue placeholder="Pilih Sub-Unit Kerja" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unitKerjaList?.map((uk: any) => (
-                    <SelectItem key={uk.id} value={String(uk.id)} className="text-xs">
-                      {uk.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                {(selectedInstansi !== 'all' || selectedUnitKerja !== 'all' || search) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedInstansi('all');
+                      setSelectedUnitKerja('all');
+                      setSearch('');
+                      setPageDirectory(1);
+                    }}
+                    className="h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground gap-1.5 self-start sm:self-auto"
+                    title="Reset Semua Filter"
+                  >
+                    <FilterX className="h-3.5 w-3.5" />
+                    Reset Filter
+                  </Button>
+                )}
+              </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Kelompok Role (RBAC) *</Label>
-              <Select
-                value={newUser.roleId}
-                onValueChange={(val) => setNewUser({ ...newUser, roleId: val })}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <SelectValue placeholder="Pilih Kelompok Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles?.map((r: any) => (
-                    <SelectItem key={r.id} value={String(r.id)} className="text-xs">
-                      {r.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+              {/* Toolbar Filter Tab 2 */}
+              <div className="space-y-3 pt-1">
+                {/* Baris 1: Pencarian */}
+                <div className="relative w-full">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Cari NIP, nama pegawai, atau username di seluruh E-Gov..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPageDirectory(1);
+                    }}
+                    className="pl-8 text-xs h-9 bg-background w-full"
+                  />
+                </div>
 
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setIsAddOpen(false)} className="text-xs">
-              Batal
-            </Button>
-            <Button
-              disabled={
-                !newUser.username ||
-                !newUser.password ||
-                !newUser.nama ||
-                createUserMutation.isPending
-              }
-              onClick={() => createUserMutation.mutate(newUser)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs"
-            >
-              {createUserMutation.isPending ? 'Menyimpan...' : 'Daftarkan Pengguna'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                {/* Baris 2: Sejajar 2 Kolom Unit Kerja & Sub Unit Kerja */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="w-full">
+                    <SearchableCombobox
+                      value={selectedInstansi}
+                      onValueChange={(val) => {
+                        setSelectedInstansi(val);
+                        setSelectedUnitKerja('all');
+                        setPageDirectory(1);
+                      }}
+                      items={instansiOptions}
+                      placeholder="Pilih Unit Kerja (OPD)..."
+                      searchPlaceholder="Ketik nama Unit Kerja / OPD..."
+                      emptyText="Unit Kerja tidak ditemukan."
+                      allLabel="-- Semua Unit Kerja (OPD) --"
+                      icon={<Building2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+                    />
+                  </div>
 
-      {/* Dialog Edit Profil & Role */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-amber-600">
-              <Pencil className="w-5 h-5" />
-              <DialogTitle>Ubah Data & Otorisasi Pengguna</DialogTitle>
-            </div>
-            <DialogDescription className="text-xs">
-              Perbarui username, email, dan kelompok hak akses role untuk <strong>{selectedUser?.nama}</strong>.
-            </DialogDescription>
-          </DialogHeader>
+                  <div className="w-full">
+                    <SearchableCombobox
+                      value={selectedUnitKerja}
+                      onValueChange={(val) => {
+                        setSelectedUnitKerja(val);
+                        setPageDirectory(1);
+                      }}
+                      items={unitKerjaOptions}
+                      placeholder={isLoadingUnitKerja ? 'Memuat Sub Unit...' : 'Pilih Sub-Unit Kerja...'}
+                      searchPlaceholder="Ketik nama Sub Unit Kerja..."
+                      emptyText="Sub Unit Kerja tidak ditemukan."
+                      allLabel="-- Semua Sub-Unit Kerja --"
+                      icon={<Layers className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
+                      disabled={isLoadingUnitKerja}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
 
-          <div className="space-y-3.5 py-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Username</Label>
-              <Input
-                value={editFormData.username}
-                onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
-                className="h-9 text-xs font-mono"
-              />
-            </div>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table className="w-full border-collapse">
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="border-b border-border/40">
+                      <TableHead className="text-xs font-semibold w-12 text-center">No</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[180px]">Pegawai & NIP</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[170px]">Username & Kontak</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[210px]">Unit / Sub-Unit Kerja</TableHead>
+                      <TableHead className="text-xs font-semibold min-w-[150px]">Hak Akses APLI DAKOP</TableHead>
+                      <TableHead className="text-xs font-semibold text-right min-w-[140px] pr-4">Aksi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingDirectory ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-32 text-center">
+                          <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                            <span className="text-xs">Menghubungkan ke server master E-Gov & SIMPEG...</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : directoryUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <Database className="h-8 w-8 stroke-1 text-muted-foreground" />
+                            <span className="text-sm font-medium">Tidak ada data pegawai ASN</span>
+                            <span className="text-xs text-muted-foreground">
+                              {search
+                                ? `Tidak ditemukan data dengan kata kunci "${search}"`
+                                : 'Server E-Gov tidak mengembalikan data.'}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      directoryUsers.map((item: any, idx: number) => (
+                        <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                            {(pageDirectory - 1) * 10 + idx + 1}.
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <div className="font-semibold text-xs text-foreground leading-snug">
+                              {item.nama}
+                            </div>
+                            <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                              NIP. {item.nip || '-'}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <span className="font-mono text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded inline-block">
+                              @{item.username}
+                            </span>
+                            <div className="flex items-center gap-1.5 text-muted-foreground mt-1 text-[11px]">
+                              <Mail className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{item.email}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            <div className="text-xs font-medium text-foreground">
+                              {item.unitKerjaNama || '-'}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {item.instansiNama}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 align-top">
+                            {item.hasRole ? (
+                              <Badge
+                                variant="secondary"
+                                className="font-medium text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                              >
+                                <ShieldCheck className="w-3 h-3 mr-1 text-emerald-600" />
+                                {item.role?.nama}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground text-[10px] font-normal">
+                                Belum Diberi Akses
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-right align-top pr-4">
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenSetRole(item)}
+                              className="h-7 px-2.5 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shrink-0 whitespace-nowrap"
+                            >
+                              <UserPlus className="h-3 w-3 shrink-0" />
+                              <span>{item.hasRole ? 'Ubah Role' : 'Tetapkan Role'}</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Email</Label>
-              <Input
-                value={editFormData.email}
-                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                className="h-9 text-xs"
-              />
-            </div>
+              {/* Pagination Tab 2 */}
+              <div className="p-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div>
+                  Menampilkan{' '}
+                  <strong className="text-foreground">
+                    {directoryUsers.length > 0 ? (pageDirectory - 1) * 10 + 1 : 0}
+                  </strong>{' '}
+                  sampai{' '}
+                  <strong className="text-foreground">
+                    {Math.min(pageDirectory * 10, totalDirectory)}
+                  </strong>{' '}
+                  dari <strong className="text-foreground">{totalDirectory}</strong> akun E-Gov
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pageDirectory <= 1}
+                    onClick={() => setPageDirectory((p) => Math.max(p - 1, 1))}
+                    className="h-8 text-xs"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                    Sebelumnya
+                  </Button>
+                  <span className="text-xs px-2 font-mono">
+                    Halaman {pageDirectory} / {totalPagesDirectory}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pageDirectory >= totalPagesDirectory}
+                    onClick={() => setPageDirectory((p) => p + 1)}
+                    className="h-8 text-xs"
+                  >
+                    Selanjutnya
+                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-            <div className="space-y-1">
-              <Label className="text-xs">No. Handphone / WA</Label>
-              <Input
-                value={editFormData.hp}
-                onChange={(e) => setEditFormData({ ...editFormData, hp: e.target.value })}
-                className="h-9 text-xs font-mono"
-              />
-            </div>
+      {/* Set Role Modal */}
+      <SetRoleDialog
+        open={setRoleOpen}
+        onOpenChange={setSetRoleOpen}
+        target={targetPegawai}
+        roles={roles}
+      />
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Penugasan Kelompok Role (RBAC)</Label>
-              <Select
-                value={editFormData.roleId}
-                onValueChange={(val) => setEditFormData({ ...editFormData, roleId: val })}
-              >
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <SelectValue placeholder="Pilih Kelompok Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles?.map((r: any) => (
-                    <SelectItem key={r.id} value={String(r.id)} className="text-xs">
-                      {r.nama}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} className="text-xs">
-              Batal
-            </Button>
-            <Button
-              disabled={editUserMutation.isPending}
-              onClick={() => editUserMutation.mutate(editFormData)}
-              className="bg-amber-600 hover:bg-amber-500 text-white text-xs"
-            >
-              {editUserMutation.isPending ? 'Menyimpan...' : 'Perbarui Pengguna'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Reset Password */}
-      <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-emerald-600">
-              <KeyRound className="w-5 h-5" />
-              <DialogTitle>Ubah Password Pengguna</DialogTitle>
-            </div>
-            <DialogDescription className="text-xs">
-              Masukkan kata sandi baru untuk akun <strong>@{selectedUser?.username}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Password Baru *</Label>
-              <Input
-                type="password"
-                placeholder="Minimal 6 karakter"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="h-9 text-xs"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setIsResetOpen(false)} className="text-xs">
-              Batal
-            </Button>
-            <Button
-              disabled={!newPassword || newPassword.length < 6 || resetPasswordMutation.isPending}
-              onClick={() =>
-                resetPasswordMutation.mutate({
-                  userId: selectedUser.id,
-                  password: newPassword,
-                })
-              }
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs"
-            >
-              {resetPasswordMutation.isPending ? 'Menyimpan...' : 'Simpan Password'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Konfirmasi Hapus Pengguna */}
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-2 text-rose-600">
-              <Trash2 className="w-5 h-5" />
-              <DialogTitle>Hapus Akun Pengguna?</DialogTitle>
-            </div>
-            <DialogDescription className="text-xs">
-              Apakah Anda yakin ingin menghapus akun <strong>{selectedUser?.nama}</strong> (@{selectedUser?.username})?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} className="text-xs">
-              Batal
-            </Button>
-            <Button
-              disabled={deleteUserMutation.isPending}
-              onClick={() => deleteUserMutation.mutate(selectedUser.id)}
-              className="bg-rose-600 hover:bg-rose-500 text-white text-xs"
-            >
-              {deleteUserMutation.isPending ? 'Menghapus...' : 'Ya, Hapus'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Revoke Role Modal */}
+      <RevokeRoleDialog
+        open={revokeRoleOpen}
+        onOpenChange={setRevokeRoleOpen}
+        target={targetPegawai}
+      />
     </div>
   );
 }
