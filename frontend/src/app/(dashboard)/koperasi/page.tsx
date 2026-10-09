@@ -629,33 +629,37 @@ export default function KoperasiPage() {
         </div>
       </Card>
 
-      {/* Modal Dialog Form Tambah / Edit Koperasi (Diperbesar max-w-5xl dengan 4 Seksi) */}
+      {/* Modal Dialog Form Tambah / Edit Koperasi (Luas & Terstruktur Persis Modal UMKM) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader className="border-b border-border/50 pb-3">
-            <div className="flex items-center gap-2 text-teal-600 dark:text-teal-400">
-              <Building2 className="w-5 h-5" />
-              <DialogTitle className="text-xl font-bold">
-                {selectedItem ? 'Edit Data Kelembagaan Koperasi' : 'Tambah Koperasi Baru'}
-              </DialogTitle>
+        <DialogContent className="max-w-4xl lg:max-w-5xl max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+          <DialogHeader className="pb-3 border-b border-border/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold tracking-tight">
+                  {selectedItem ? 'Edit Data Koperasi' : 'Tambah Data Koperasi Baru'}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Lengkapi data profil kelembagaan, badan hukum, kepengurusan, dan keuangan koperasi Kabupaten Konawe Selatan.
+                </DialogDescription>
+              </div>
             </div>
-            <DialogDescription className="text-xs">
-              Formulir pendataan badan hukum, status kelembagaan, kepengurusan, serta kinerja finansial koperasi
-            </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-6 py-3">
+          <form onSubmit={handleSubmit} className="space-y-6 pt-2">
             {/* Seksi 1: Identitas Kelembagaan & Legalitas */}
-            <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-2">
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 <span>1. Identitas Kelembagaan & Legalitas Koperasi</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5 md:col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="namaKoperasi" className="text-xs font-medium">
-                    Nama Resmi Koperasi <span className="text-red-500">*</span>
+                    Nama Resmi Koperasi <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="namaKoperasi"
@@ -667,9 +671,9 @@ export default function KoperasiPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="jenisKoperasiId" className="text-xs font-medium">
-                    Jenis Koperasi <span className="text-red-500">*</span>
+                    Jenis Koperasi <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={formData.jenisKoperasiId}
@@ -680,7 +684,7 @@ export default function KoperasiPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {jenisKoperasiList?.map((jk: any) => (
-                        <SelectItem key={jk.id} value={jk.id}>
+                        <SelectItem key={jk.id} value={jk.id} className="text-xs">
                           {jk.uraian}
                         </SelectItem>
                       ))}
@@ -696,14 +700,14 @@ export default function KoperasiPage() {
                     id="noBadanHukum"
                     value={formData.noBadanHukum}
                     onChange={(e) => setFormData({ ...formData, noBadanHukum: e.target.value })}
-                    placeholder="AHU-00123.AH.01.26.TAHUN 2021"
+                    placeholder="AHU-00123.AH.01..."
                     className="h-9 text-xs font-mono"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="tglBadanHukum" className="text-xs font-medium">
-                    Tanggal Pengesahan Badan Hukum
+                    Tanggal Pengesahan
                   </Label>
                   <Input
                     id="tglBadanHukum"
@@ -727,35 +731,33 @@ export default function KoperasiPage() {
                   />
                 </div>
 
-                <div className="md:col-span-3 flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="statusAktif" className="text-xs font-semibold cursor-pointer">
-                      Status Keaktifan Organisasi
-                    </Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Koperasi aktif rutin menyelenggarakan Rapat Anggota Tahunan (RAT) dan memiliki unit usaha operasional.
-                    </p>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Status Organisasi</Label>
+                  <div className="flex items-center justify-between h-9 px-3 rounded-md border border-input bg-background">
+                    <span className="text-xs font-medium">
+                      {formData.statusAktif ? 'Aktif (RAT)' : 'Tidak Aktif'}
+                    </span>
+                    <Switch
+                      id="statusAktif"
+                      checked={formData.statusAktif}
+                      onCheckedChange={(checked) => setFormData({ ...formData, statusAktif: checked })}
+                    />
                   </div>
-                  <Switch
-                    id="statusAktif"
-                    checked={formData.statusAktif}
-                    onCheckedChange={(checked) => setFormData({ ...formData, statusAktif: checked })}
-                  />
                 </div>
               </div>
             </div>
 
-            {/* Seksi 2: Wilayah & Lokasi Kantor */}
-            <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-2">
+            {/* Seksi 2: Wilayah Administratif & Alamat Kantor */}
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>2. Domisili Wilayah & Alamat Kantor Sekretariat</span>
+                <span>2. Domisili Wilayah Administratif & Alamat Sekretariat</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="modalKecamatanId" className="text-xs font-medium">
-                    Kecamatan <span className="text-red-500">*</span>
+                    Kecamatan <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={formData.kecamatanId}
@@ -766,7 +768,7 @@ export default function KoperasiPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {kecamatanList?.map((kec: any) => (
-                        <SelectItem key={kec.id} value={kec.id}>
+                        <SelectItem key={kec.id} value={kec.id} className="text-xs">
                           {kec.nama}
                         </SelectItem>
                       ))}
@@ -792,7 +794,7 @@ export default function KoperasiPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {modalDesaList?.map((desa: any) => (
-                        <SelectItem key={desa.id} value={desa.id}>
+                        <SelectItem key={desa.id} value={desa.id} className="text-xs">
                           {desa.nama}
                         </SelectItem>
                       ))}
@@ -800,7 +802,7 @@ export default function KoperasiPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5 md:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
                   <Label htmlFor="alamat" className="text-xs font-medium">
                     Alamat Lengkap Kantor Sekretariat
                   </Label>
@@ -816,13 +818,13 @@ export default function KoperasiPage() {
             </div>
 
             {/* Seksi 3: Kepengurusan & Keanggotaan */}
-            <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-2">
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>3. Kepengurusan & Keanggotaan</span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="ketua" className="text-xs font-medium">
                     Nama Ketua Koperasi
@@ -844,7 +846,7 @@ export default function KoperasiPage() {
                     id="telpKoperasi"
                     value={formData.telpKoperasi}
                     onChange={(e) => setFormData({ ...formData, telpKoperasi: e.target.value })}
-                    placeholder="081234567890"
+                    placeholder="08xxxxxxxxxx"
                     className="h-9 text-xs font-mono"
                   />
                 </div>
@@ -866,13 +868,13 @@ export default function KoperasiPage() {
             </div>
 
             {/* Seksi 4: Finansial & Permodalan */}
-            <div className="p-4 rounded-xl border border-border/60 bg-muted/20 space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground border-b border-border/40 pb-2">
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <span>4. Kinerja Keuangan & Permodalan (Rp)</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="modalSendiri" className="text-xs font-medium">
                     Modal Sendiri (Simpanan Pokok & Wajib)
@@ -938,27 +940,35 @@ export default function KoperasiPage() {
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-2 md:col-span-1">
+                <div className="space-y-1.5">
                   <Label htmlFor="keterangan" className="text-xs font-medium">
-                    Catatan / Keterangan Tambahan
+                    Catatan / Keterangan
                   </Label>
                   <Input
                     id="keterangan"
                     value={formData.keterangan}
                     onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })}
-                    placeholder="Catatan kelembagaan..."
+                    placeholder="Catatan tambahan..."
                     className="h-9 text-xs"
                   />
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="pt-2 border-t border-border/50 gap-2">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <DialogFooter className="pt-3 border-t border-border/40 flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="text-xs">
                 Batal
               </Button>
-              <Button type="submit" className="bg-teal-600 hover:bg-teal-500 text-white">
-                {selectedItem ? 'Simpan Perubahan Koperasi' : 'Simpan Koperasi Baru'}
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-teal-600 hover:bg-teal-500 text-white text-xs"
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? 'Menyimpan...'
+                  : selectedItem
+                  ? 'Perbarui Data Koperasi'
+                  : 'Simpan Koperasi Baru'}
               </Button>
             </DialogFooter>
           </form>
