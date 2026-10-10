@@ -1,25 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
-import { Tag, Plus, Edit, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, Plus, RefreshCw, Search, Tag, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+type JenisUsahaItem = {
+  id: string;
+  uraian: string;
+  pelakuCount: number;
+  createdAt?: string;
+};
 
 export default function JenisUsahaPage() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<JenisUsahaItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<JenisUsahaItem | null>(null);
+  const [search, setSearch] = useState('');
   const [uraian, setUraian] = useState('');
 
-  const { data: list, isLoading } = useQuery({
+  const { data: list = [], isLoading, isFetching, isError, refetch } = useQuery<JenisUsahaItem[]>({
     queryKey: ['jenis-usaha-list'],
     queryFn: async () => (await api.get('/master-jenis/usaha')).data,
+    staleTime: 5 * 60 * 1000,
   });
+
+  const filteredList = useMemo(() => {
+    const keyword = search.trim().toLocaleLowerCase('id-ID');
+    if (!keyword) return list;
+    return list.filter((item) => item.uraian.toLocaleLowerCase('id-ID').includes(keyword));
+  }, [list, search]);
 
   const createMutation = useMutation({
     mutationFn: (uraian: string) => api.post('/master-jenis/usaha', { uraian }),
@@ -49,6 +75,7 @@ export default function JenisUsahaPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jenis-usaha-list'] });
       toast.success('Jenis Usaha berhasil dihapus');
+      setPendingDelete(null);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Gagal menghapus'),
   });
@@ -59,7 +86,7 @@ export default function JenisUsahaPage() {
     setIsDialogOpen(true);
   };
 
-  const handleOpenEdit = (item: any) => {
+  const handleOpenEdit = (item: JenisUsahaItem) => {
     setEditingItem(item);
     setUraian(item.uraian);
     setIsDialogOpen(true);
@@ -75,9 +102,19 @@ export default function JenisUsahaPage() {
     }
   };
 
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open && !isSaving) {
+      setEditingItem(null);
+      setUraian('');
+    }
+  };
+
   return (
     <div className="px-4 lg:px-8 space-y-6">
-      <div className="flex items-center justify-between pb-2 border-b border-border/40">
+      <div className="flex flex-col gap-3 border-b border-border/40 pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Master Jenis Usaha</h1>
           <p className="text-sm text-muted-foreground">Kategori dan klasifikasi sektor usaha pelaku UMKM</p>
@@ -86,6 +123,24 @@ export default function JenisUsahaPage() {
           <Plus className="w-4 h-4 mr-2" />
           Tambah Jenis Usaha
         </Button>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Cari jenis usaha..."
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground sm:justify-end">
+          <span>{filteredList.length.toLocaleString('id-ID')} dari {list.length.toLocaleString('id-ID')} kategori</span>
+          <Button type="button" variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> Muat ulang
+          </Button>
+        </div>
       </div>
 
       <Card className="border-border/60">
@@ -102,23 +157,43 @@ export default function JenisUsahaPage() {
             <tbody className="divide-y divide-border/30">
               {isLoading ? (
                 <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Memuat data...</td></tr>
-              ) : list?.length === 0 ? (
-                <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Belum ada data.</td></tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-destructive">
+                    <AlertCircle className="mx-auto mb-2 h-5 w-5" />
+                    Master Jenis Usaha gagal dimuat.
+                  </td>
+                </tr>
+              ) : filteredList.length === 0 ? (
+                <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">Tidak ada jenis usaha yang sesuai.</td></tr>
               ) : (
-                list?.map((item: any, idx: number) => (
+                filteredList.map((item, idx) => (
                   <tr key={item.id} className="hover:bg-muted/30">
                     <td className="px-4 py-3 text-xs text-muted-foreground w-12">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium flex items-center gap-2">
                       <Tag className="w-4 h-4 text-emerald-500" />
                       {item.uraian}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono text-xs">{item._count?.pelakus || 0}</td>
+                    <td className="px-4 py-3 text-center font-mono text-xs">{item.pelakuCount.toLocaleString('id-ID')}</td>
                     <td className="px-4 py-3 text-center w-28">
                       <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-emerald-500" onClick={() => handleOpenEdit(item)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:text-emerald-500"
+                          onClick={() => handleOpenEdit(item)}
+                          aria-label={`Edit ${item.uraian}`}
+                        >
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => deleteMutation.mutate(item.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:text-destructive"
+                          onClick={() => setPendingDelete(item)}
+                          disabled={deleteMutation.isPending}
+                          aria-label={`Hapus ${item.uraian}`}
+                        >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </div>
@@ -131,7 +206,7 @@ export default function JenisUsahaPage() {
         </div>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingItem ? 'Edit Jenis Usaha' : 'Tambah Jenis Usaha'}</DialogTitle>
@@ -145,12 +220,44 @@ export default function JenisUsahaPage() {
               required
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Batal</Button>
-              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white">Simpan</Button>
+              <Button type="button" variant="outline" onClick={() => handleDialogOpenChange(false)} disabled={isSaving}>Batal</Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white" disabled={isSaving || !uraian.trim()}>
+                {isSaving ? 'Menyimpan...' : 'Simpan'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(pendingDelete)} onOpenChange={(open) => !open && !deleteMutation.isPending && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus jenis usaha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete && pendingDelete.pelakuCount > 0
+                ? `${pendingDelete.uraian} masih digunakan oleh ${pendingDelete.pelakuCount.toLocaleString('id-ID')} pelaku UMKM sehingga tidak dapat dihapus.`
+                : `${pendingDelete?.uraian || 'Jenis usaha ini'} akan dihapus permanen dari master data.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              {pendingDelete && pendingDelete.pelakuCount > 0 ? 'Tutup' : 'Batal'}
+            </AlertDialogCancel>
+            {pendingDelete && pendingDelete.pelakuCount === 0 && (
+              <AlertDialogAction
+                disabled={deleteMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(event) => {
+                  event.preventDefault();
+                  deleteMutation.mutate(pendingDelete.id);
+                }}
+              >
+                {deleteMutation.isPending ? 'Menghapus...' : 'Hapus'}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

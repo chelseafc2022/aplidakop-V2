@@ -20,6 +20,7 @@ import {
   FileText,
   Layers,
   Sparkles,
+  Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -602,75 +603,150 @@ export default function DashboardPage() {
         </Card>
 
         {/* Card 2: Pusat Navigasi & Tata Kelola Smart City */}
-        <Card className="border-border/60 shadow-xs flex flex-col justify-between">
+        <Card className="border-border/60 shadow-xs flex flex-col">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Layers className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              Pusat Tata Kelola & Pipa Inovasi Daerah
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <Layers className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                Pusat Tata Kelola & Pipa Inovasi Daerah
+              </CardTitle>
+              <Badge variant="outline" className="text-[11px] font-medium border-teal-500/30 text-teal-700 dark:text-teal-400 bg-teal-500/5 hidden sm:inline-flex">
+                Smart City 2026
+              </Badge>
+            </div>
             <CardDescription className="text-xs">
-              Akses cepat ke modul operasional harian, manajemen basis data, dan portofolio Smart City
+              Akses cepat ke modul operasional harian, integrasi Satu Data, dan portofolio inovasi daerah
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Link
-              href="/pelaku-umkm"
-              className="p-3.5 rounded-xl border border-border/50 hover:border-emerald-500/40 bg-muted/20 hover:bg-emerald-500/5 transition-all flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground group-hover:text-emerald-600 transition-colors">
-                    Basis Data Pelaku UMKM ({totalUmkmCount.toLocaleString('id-ID')} Data)
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    Filter 25 kecamatan, pencarian NIK debounced, batch import & export laporan
-                  </p>
-                </div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
-            </Link>
-
-            <Link
-              href="/koperasi"
-              className="p-3.5 rounded-xl border border-border/50 hover:border-teal-500/40 bg-muted/20 hover:bg-teal-500/5 transition-all flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground group-hover:text-teal-600 transition-colors">
-                    Buku Induk Koperasi Daerah (326 Lembaga)
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    Status keaktifan RAT, nomor badan hukum, pengurus, dan modal usaha
-                  </p>
-                </div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-teal-600 transition-colors" />
-            </Link>
-
+          <CardContent className="space-y-2.5 flex-1 flex flex-col justify-between">
+            {/* Highlight Banner: Status Kesiapan Inovasi Smart City */}
             <Link
               href="/inovasi"
-              className="p-3.5 rounded-xl border border-border/50 hover:border-amber-500/40 bg-muted/20 hover:bg-amber-500/5 transition-all flex items-center justify-between group"
+              className="p-2.5 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent hover:border-amber-500/50 hover:bg-amber-500/10 transition-all flex items-center justify-between group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                  <Award className="w-5 h-5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground group-hover:text-amber-600 transition-colors">
-                    Dokumen & Portofolio Smart City 2026
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    Matriks Before vs After, 9 kriteria inovasi Smart Economy & cetak portofolio
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                      Kesiapan Portofolio Smart Economy 2026
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                      10/10 Terpenuhi
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Skor Kematangan Inovasi 98% • Lolos 10 Indikator Evaluasi Kemendagri & SPBE
                   </p>
                 </div>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 transition-colors" />
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
+            </Link>
+
+            {/* Modul 1: Basis Data UMKM */}
+            <Link
+              href="/pelaku-umkm"
+              className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-emerald-500/40 bg-muted/20 hover:bg-emerald-500/5 transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Store className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
+                      Basis Data Pelaku UMKM ({totalUmkmCount.toLocaleString('id-ID')} Data)
+                    </h4>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shrink-0 hidden xs:inline">
+                      Satu Data
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Filter 25 kecamatan, validasi NIK unik terverifikasi, batch import & export laporan
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
+            </Link>
+
+            {/* Modul 2: Buku Induk Koperasi */}
+            <Link
+              href="/koperasi"
+              className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-teal-500/40 bg-muted/20 hover:bg-teal-500/5 transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-semibold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors truncate">
+                      Buku Induk Koperasi Daerah ({totalKoperasiCount.toLocaleString('id-ID')} Lembaga)
+                    </h4>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 shrink-0 hidden xs:inline">
+                      RAT & Legalitas
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Status keaktifan RAT, nomor badan hukum Kemenkop, pengurus, dan modal usaha
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-teal-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
+            </Link>
+
+            {/* Modul 3: Fasilitasi Pembiayaan & Akses Permodalan */}
+            <Link
+              href="/pembiayaan"
+              className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-blue-500/40 bg-muted/20 hover:bg-blue-500/5 transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  <Coins className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-semibold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                      Fasilitasi Pembiayaan & Akses Modal
+                    </h4>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 shrink-0 hidden xs:inline">
+                      KUR & Usaha
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Penyaluran KUR, histori pembiayaan perbankan, & rekomendasi dinas terpadu
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
+            </Link>
+
+            {/* Modul 4: Portofolio & Dokumen Inovasi */}
+            <Link
+              href="/inovasi"
+              className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-amber-500/40 bg-muted/20 hover:bg-amber-500/5 transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Award className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-semibold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
+                      Dokumen Portofolio & Matriks Inovasi
+                    </h4>
+                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0 hidden xs:inline">
+                      Before/After
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    Matriks transformasi Before vs After, 10 kriteria evaluasi & cetak portofolio PDF
+                  </p>
+                </div>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
             </Link>
           </CardContent>
         </Card>
