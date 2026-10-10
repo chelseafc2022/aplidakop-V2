@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Allow all traffic through to proper Next.js App Router handlers
+  const { pathname } = request.nextUrl
+
+  if (pathname === '/' || pathname === '/landing') {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
   return NextResponse.next()
 }
 

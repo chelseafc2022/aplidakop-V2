@@ -5,12 +5,17 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
   const { id } = await params;
   try {
     const body = await req.json();
 
     const res = await fetchFromBackend('/api/v1/master_koperasi/editData', {
       method: 'POST',
+      headers: { Authorization: authHeader },
       body: JSON.stringify({ ...body, id }),
     });
 
@@ -36,11 +41,16 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
   const { id } = await params;
 
   try {
     const res = await fetchFromBackend('/api/v1/master_koperasi/removeData', {
       method: 'POST',
+      headers: { Authorization: authHeader },
       body: JSON.stringify({ id }),
     });
 

@@ -15,8 +15,10 @@ import {
   ShieldCheck,
   Users,
   UserRoundSearch,
+  ListChecks,
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useAuthStore } from "@/stores/auth-store"
 import { isAdministratorRole } from "@/lib/auth-role"
 import { NavMain } from "@/components/nav-main"
@@ -26,9 +28,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
 const navigationData = {
@@ -122,6 +121,12 @@ const navigationData = {
           icon: UserRoundSearch,
           administratorOnly: true,
         },
+        {
+          title: "Verifikasi Koperasi",
+          url: "/management/verifikasi-koperasi",
+          icon: ListChecks,
+          administratorOnly: true,
+        },
       ],
     },
   ],
@@ -152,22 +157,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="cursor-pointer">
-              <Link href="/dashboard" className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold shadow-md shadow-emerald-500/20">
-                  <Store className="h-5 w-5" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-bold tracking-tight text-foreground">APLI DAKOP</span>
-                  <span className="truncate text-xs text-muted-foreground font-medium">Kab. Konawe Selatan</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="border-b border-sidebar-border/40 p-2 sm:p-2.5">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center w-full rounded-xl py-2 px-1 hover:bg-sidebar-accent/50 transition-colors group/logo"
+          title="APLI DAKOP — Dashboard"
+        >
+          {/* Logo Resmi Lengkap (Expanded Mode) */}
+          <div className="relative flex items-center justify-center w-full group-data-[collapsible=icon]:hidden">
+            <Image
+              src="/logo_with_text.png"
+              alt="Logo Resmi APLI DAKOP Kab. Konawe Selatan"
+              width={260}
+              height={70}
+              className="w-full h-auto max-h-[72px] object-contain drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-[1.02]"
+              priority
+            />
+          </div>
+          {/* Logo Monogram Lambang Resmi (Collapsed Icon Mode) */}
+          <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center w-full py-1">
+            <Image
+              src="/logo_only.png"
+              alt="APLI DAKOP"
+              width={48}
+              height={48}
+              className="h-10 w-10 object-contain drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-105"
+              priority
+            />
+          </div>
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         {visibleNavigationGroups.map((group) => (

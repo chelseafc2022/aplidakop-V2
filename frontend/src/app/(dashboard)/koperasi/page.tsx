@@ -25,8 +25,12 @@ import {
   ShieldCheck,
   FileText,
   Phone,
+  Eye,
+  Flag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuthStore } from '@/stores/auth-store';
+import { isAdministratorRole } from '@/lib/auth-role';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,8 +40,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 
+const showValue = (value: unknown) => value === null || value === undefined || value === '' ? '—' : String(value);
+const showMoney = (value: unknown) => value === null || value === undefined || value === '' ? '—' : `Rp ${Number(value).toLocaleString('id-ID')}`;
+const showMappingStatus = (value: unknown) => ({
+  MAPPED: 'Terpetakan',
+  UNMAPPED: 'Belum terpetakan',
+  UNMAPPED_PRESERVED: 'Belum cocok — peta lama dipertahankan',
+}[String(value)] || showValue(value));
+
 export default function KoperasiPage() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const isAdministrator = isAdministratorRole(user?.role?.nama);
 
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebounce(searchInput, 350);
@@ -51,6 +65,9 @@ export default function KoperasiPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
+  const [flagReason, setFlagReason] = useState('');
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -63,15 +80,29 @@ export default function KoperasiPage() {
     desaId: '',
     jenisKoperasiId: '',
     statusAktif: true,
-    jumlahAnggota: 20,
-    modalSendiri: 0,
-    modalLuar: 0,
-    aset: 0,
-    volumeUsaha: 0,
-    shu: 0,
+    jumlahAnggota: '',
+    modalSendiri: '',
+    modalLuar: '',
+    aset: '',
+    volumeUsaha: '',
+    shu: '',
     ketua: '',
     telpKoperasi: '',
     keterangan: '',
+    bentukKoperasi: '',
+    polaPengelolaan: '',
+    sektorUsaha: '',
+    kelompokKoperasi: '',
+    kabupatenKota: '',
+    kelurahanSumber: '',
+    desaSumber: '',
+    kodePos: '',
+    email: '',
+    kuk: '',
+    grade: '',
+    statusAkunOdsMandiri: '',
+    tahunPendataan: '',
+    tanggalDiterima: '',
   });
 
   // Queries
@@ -146,8 +177,25 @@ export default function KoperasiPage() {
     selectedStatus !== 'all';
 
   // Export Excel (.csv)
-  const handleExportCSV = () => {
-    const listToExport = koperasiResponse?.data || [];
+  const handleExportCSV = async () => {
+    let listToExport: any[] = [];
+    try {
+      const response = await api.get('/koperasi', {
+        params: {
+          page: 1,
+          limit: 5000,
+          search: debouncedSearch || undefined,
+          kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
+          desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
+          jenisKoperasiId: selectedJenisKoperasi !== 'all' ? selectedJenisKoperasi : undefined,
+          statusAktif: selectedStatus === 'all' ? undefined : selectedStatus,
+        },
+      });
+      listToExport = response.data?.data || [];
+    } catch {
+      toast.error('Gagal menyiapkan data ekspor');
+      return;
+    }
     if (listToExport.length === 0) {
       toast.error('Tidak ada data koperasi untuk diekspor');
       return;
@@ -170,7 +218,9 @@ export default function KoperasiPage() {
       'Modal Sendiri (Rp)',
       'Modal Luar (Rp)',
       'Total Aset (Rp)',
-      'Keterangan',
+      'Keterangan', 'Bentuk Koperasi', 'Pola Pengelolaan', 'Sektor Usaha',
+      'Kelompok Koperasi', 'Kabupaten/Kota', 'Kode Pos', 'Email', 'KUK', 'Grade',
+      'Status Akun ODS Mandiri', 'Tahun Pendataan', 'Tanggal Diterima',
     ];
 
     const rows = listToExport.map((item: any, idx: number) => [
@@ -186,11 +236,19 @@ export default function KoperasiPage() {
       `"${(item.alamat || '-').replace(/"/g, '""')}"`,
       `"${(item.ketua || '-').replace(/"/g, '""')}"`,
       item.telpKoperasi || '-',
-      item.jumlahAnggota || 0,
-      item.modalAwal || 0,
-      item.asset || 0,
-      item.asset || 0,
+      item.jumlahAnggota ?? '',
+      item.modalAwal ?? '',
+      item.modalLuar ?? '',
+      item.asset ?? '',
       `"${(item.keterangan || '-').replace(/"/g, '""')}"`,
+      `"${(item.bentukKoperasi || '').replace(/"/g, '""')}"`,
+      `"${(item.polaPengelolaan || '').replace(/"/g, '""')}"`,
+      `"${(item.sektorUsaha || '').replace(/"/g, '""')}"`,
+      `"${(item.kelompokKoperasi || '').replace(/"/g, '""')}"`,
+      `"${(item.kabupatenKota || '').replace(/"/g, '""')}"`,
+      item.kodePos || '', item.email || '', item.kuk ?? '', item.grade || '',
+      `"${(item.statusAkunOdsMandiri || '').replace(/"/g, '""')}"`,
+      item.tahunPendataan ?? '', item.tanggalDiterima || '',
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e: any[]) => e.join(','))].join('\n');
@@ -246,27 +304,35 @@ export default function KoperasiPage() {
     },
   });
 
+  const flagMutation = useMutation({
+    mutationFn: ({ koperasiId, reason }: { koperasiId: string; reason: string }) => api.post('/management/verifikasi-koperasi', { mode: 'flag', koperasiId, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['verifikasi-koperasi'] });
+      toast.success('Koperasi masuk antrean verifikasi administrator');
+      setIsFlagDialogOpen(false); setFlagReason('');
+    },
+    onError: (error: any) => toast.error(error.response?.data?.message || 'Gagal menandai koperasi'),
+  });
+
   const handleOpenAdd = () => {
     setSelectedItem(null);
     setFormData({
       namaKoperasi: '',
       noBadanHukum: '',
-      tglBadanHukum: new Date().toISOString().substring(0, 10),
+      tglBadanHukum: '',
       nikop: '',
       alamat: '',
       kecamatanId: '',
       desaId: '',
       jenisKoperasiId: '',
       statusAktif: true,
-      jumlahAnggota: 20,
-      modalSendiri: 0,
-      modalLuar: 0,
-      aset: 0,
-      volumeUsaha: 0,
-      shu: 0,
+      jumlahAnggota: '', modalSendiri: '', modalLuar: '', aset: '', volumeUsaha: '', shu: '',
       ketua: '',
       telpKoperasi: '',
       keterangan: '',
+      bentukKoperasi: '', polaPengelolaan: '', sektorUsaha: '', kelompokKoperasi: '',
+      kabupatenKota: '', kelurahanSumber: '', desaSumber: '', kodePos: '', email: '', kuk: '',
+      grade: '', statusAkunOdsMandiri: '', tahunPendataan: '', tanggalDiterima: '',
     });
     setIsDialogOpen(true);
   };
@@ -283,23 +349,30 @@ export default function KoperasiPage() {
       desaId: item.desa?.id || item.desaId || '',
       jenisKoperasiId: item.jenisKoperasi?.id || item.jenisKoperasiId || '',
       statusAktif: item.statusAktif ?? true,
-      jumlahAnggota: item.jumlahAnggota || 20,
-      modalSendiri: Number(item.modalAwal) || 0,
-      modalLuar: Number(item.modalLuar) || 0,
-      aset: Number(item.asset) || 0,
-      volumeUsaha: Number(item.volumeUsaha) || 0,
-      shu: Number(item.shu) || 0,
+      jumlahAnggota: item.jumlahAnggota?.toString() || '',
+      modalSendiri: item.modalAwal?.toString() || '',
+      modalLuar: item.modalLuar?.toString() || '',
+      aset: item.asset?.toString() || '',
+      volumeUsaha: item.volumeUsaha?.toString() || '',
+      shu: item.shu?.toString() || '',
       ketua: item.ketua || '',
       telpKoperasi: item.telpKoperasi || '',
       keterangan: item.keterangan || '',
+      bentukKoperasi: item.bentukKoperasi || '', polaPengelolaan: item.polaPengelolaan || '',
+      sektorUsaha: item.sektorUsaha || '', kelompokKoperasi: item.kelompokKoperasi || '',
+      kabupatenKota: item.kabupatenKota || '', kelurahanSumber: item.kelurahanSumber || '',
+      desaSumber: item.desaSumber || '', kodePos: item.kodePos || '', email: item.email || '',
+      kuk: item.kuk?.toString() || '', grade: item.grade || '',
+      statusAkunOdsMandiri: item.statusAkunOdsMandiri || '',
+      tahunPendataan: item.tahunPendataan?.toString() || '', tanggalDiterima: item.tanggalDiterima?.substring(0, 10) || '',
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.namaKoperasi) {
-      toast.error('Harap isi Nama Koperasi');
+    if (!formData.namaKoperasi.trim() || !formData.jenisKoperasiId) {
+      toast.error('Nama dan jenis koperasi wajib diisi');
       return;
     }
 
@@ -560,10 +633,10 @@ export default function KoperasiPage() {
 
                     <td className="px-4 py-3.5 text-right font-mono text-xs">
                       <div className="font-semibold text-foreground">
-                        Rp {Number(k.asset || 0).toLocaleString('id-ID')}
+                        {showMoney(k.asset)}
                       </div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        Modal: Rp {Number(k.modalAwal || 0).toLocaleString('id-ID')}
+                        Modal: {showMoney(k.modalAwal)}
                       </div>
                     </td>
 
@@ -572,8 +645,18 @@ export default function KoperasiPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 text-slate-600 hover:bg-slate-500/10 hover:text-slate-900 dark:text-slate-300"
+                          onClick={() => { setSelectedItem(k); setIsDetailDialogOpen(true); }}
+                          aria-label={`Lihat detail ${k.namaKoperasi}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-blue-600 hover:text-blue-500 hover:bg-blue-500/10"
                           onClick={() => handleOpenEdit(k)}
+                          aria-label={`Edit ${k.namaKoperasi}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -585,6 +668,7 @@ export default function KoperasiPage() {
                             setSelectedItem(k);
                             setIsDeleteDialogOpen(true);
                           }}
+                          aria-label={`Hapus ${k.namaKoperasi}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -628,6 +712,49 @@ export default function KoperasiPage() {
           </div>
         </div>
       </Card>
+
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto p-0">
+          <DialogHeader className="border-b border-border/50 bg-muted/30 p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600"><Building2 className="h-5 w-5" /></div>
+              <div><DialogTitle className="text-xl">{selectedItem?.namaKoperasi || 'Detail Koperasi'}</DialogTitle><DialogDescription className="mt-1">Informasi lengkap kelembagaan, wilayah, ODS, pengurus, dan keuangan.</DialogDescription></div>
+            </div>
+          </DialogHeader>
+          {selectedItem && <div className="space-y-5 p-6">
+            {[
+              { title: 'Identitas & Legalitas', items: [
+                ['NIKOP', selectedItem.nikop], ['Nomor Badan Hukum', selectedItem.nomorBadanHukum], ['Tanggal Badan Hukum', selectedItem.tanggalBadanHukum],
+                ['Jenis Koperasi', selectedItem.jenisKoperasi?.uraian], ['Status', selectedItem.statusKoperasi], ['Bentuk', selectedItem.bentukKoperasi], ['Pola Pengelolaan', selectedItem.polaPengelolaan],
+              ] },
+              { title: 'Wilayah & Kontak', items: [
+                ['Kecamatan', selectedItem.kecamatan?.nama], ['Desa/Kelurahan Terpetakan', selectedItem.desa?.nama], ['Desa Sumber', selectedItem.desaSumber], ['Kelurahan Sumber', selectedItem.kelurahanSumber],
+                ['Status Pemetaan', showMappingStatus(selectedItem.wilayahMappingStatus)], ['Alamat', selectedItem.alamat], ['Kode Pos', selectedItem.kodePos], ['Email', selectedItem.email],
+              ] },
+              { title: 'Profil ODS', items: [
+                ['Sektor Usaha', selectedItem.sektorUsaha], ['Kelompok Koperasi', selectedItem.kelompokKoperasi], ['Kabupaten/Kota', selectedItem.kabupatenKota], ['KUK', selectedItem.kuk],
+                ['Grade', selectedItem.grade], ['Status Akun ODS Mandiri', selectedItem.statusAkunOdsMandiri], ['Tahun Pendataan', selectedItem.tahunPendataan], ['Tanggal Diterima', selectedItem.tanggalDiterima],
+              ] },
+              { title: 'Pengurus & Keanggotaan', items: [
+                ['Ketua', selectedItem.ketua], ['NIK Ketua', selectedItem.nikKetua], ['Kontak Ketua', selectedItem.telpKoperasi], ['Sekretaris', selectedItem.namaSekretaris],
+                ['Bendahara', selectedItem.namaBendahara], ['Pengawas', selectedItem.namaPengawas], ['Jumlah Anggota', selectedItem.jumlahAnggota],
+              ] },
+            ].map((section) => <section key={section.title} className="rounded-xl border border-border/50 p-4">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{section.title}</h3>
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">{section.items.map(([label, value]) => <div key={label as string}><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="mt-0.5 break-words text-sm font-medium">{showValue(value)}</dd></div>)}</dl>
+            </section>)}
+            <section className="rounded-xl border border-border/50 p-4"><h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Keuangan</h3><dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+              {[['Modal Sendiri', selectedItem.modalAwal], ['Modal Luar', selectedItem.modalLuar], ['Aset', selectedItem.asset], ['Volume Usaha', selectedItem.volumeUsaha], ['SHU', selectedItem.shu]].map(([label, value]) => <div key={label as string}><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="mt-0.5 text-sm font-semibold">{showMoney(value)}</dd></div>)}
+            </dl></section>
+            <div className="rounded-lg bg-muted/40 p-3 text-sm"><span className="text-muted-foreground">Keterangan: </span>{showValue(selectedItem.keterangan)}</div>
+          </div>}
+          <DialogFooter className="border-t border-border/50 p-4 sm:px-6 sm:justify-between"><div>{isAdministrator && <Button variant="outline" className="border-amber-500/40 text-amber-700" onClick={() => { setIsDetailDialogOpen(false); setIsFlagDialogOpen(true); }}><Flag className="mr-2 h-4 w-4" />Tandai perlu verifikasi</Button>}</div><div className="flex gap-2"><Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>Tutup</Button><Button onClick={() => { const item = selectedItem; setIsDetailDialogOpen(false); if (item) handleOpenEdit(item); }} className="bg-teal-600 text-white hover:bg-teal-500"><Edit className="mr-2 h-4 w-4" />Edit Data</Button></div></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isFlagDialogOpen} onOpenChange={(open) => !flagMutation.isPending && setIsFlagDialogOpen(open)}>
+        <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Tandai data perlu diverifikasi</DialogTitle><DialogDescription>{selectedItem?.namaKoperasi} akan masuk antrean administrator. Data master tidak berubah sampai proses verifikasi ditetapkan.</DialogDescription></DialogHeader><div className="space-y-2"><Label htmlFor="flag-reason">Bagian yang keliru atau perlu diperiksa *</Label><Input id="flag-reason" value={flagReason} onChange={(event) => setFlagReason(event.target.value)} placeholder="Contoh: NIKOP atau desa tidak sesuai dokumen" /></div><DialogFooter><Button variant="outline" disabled={flagMutation.isPending} onClick={() => setIsFlagDialogOpen(false)}>Batal</Button><Button disabled={!selectedItem || !flagReason.trim() || flagMutation.isPending} onClick={() => selectedItem && flagMutation.mutate({ koperasiId: selectedItem.id, reason: flagReason.trim() })}>{flagMutation.isPending ? 'Menyimpan...' : 'Masukkan antrean'}</Button></DialogFooter></DialogContent>
+      </Dialog>
 
       {/* Modal Dialog Form Tambah / Edit Koperasi (Luas & Terstruktur Persis Modal UMKM) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -859,7 +986,7 @@ export default function KoperasiPage() {
                     id="jumlahAnggota"
                     type="number"
                     value={formData.jumlahAnggota}
-                    onChange={(e) => setFormData({ ...formData, jumlahAnggota: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, jumlahAnggota: e.target.value })}
                     className="h-9 text-xs font-mono"
                     min="0"
                   />
@@ -883,7 +1010,7 @@ export default function KoperasiPage() {
                     id="modalSendiri"
                     type="number"
                     value={formData.modalSendiri}
-                    onChange={(e) => setFormData({ ...formData, modalSendiri: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, modalSendiri: e.target.value })}
                     className="h-9 text-xs font-mono"
                   />
                 </div>
@@ -896,7 +1023,7 @@ export default function KoperasiPage() {
                     id="modalLuar"
                     type="number"
                     value={formData.modalLuar}
-                    onChange={(e) => setFormData({ ...formData, modalLuar: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, modalLuar: e.target.value })}
                     className="h-9 text-xs font-mono"
                   />
                 </div>
@@ -909,7 +1036,7 @@ export default function KoperasiPage() {
                     id="aset"
                     type="number"
                     value={formData.aset}
-                    onChange={(e) => setFormData({ ...formData, aset: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, aset: e.target.value })}
                     className="h-9 text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400"
                   />
                 </div>
@@ -922,7 +1049,7 @@ export default function KoperasiPage() {
                     id="volumeUsaha"
                     type="number"
                     value={formData.volumeUsaha}
-                    onChange={(e) => setFormData({ ...formData, volumeUsaha: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, volumeUsaha: e.target.value })}
                     className="h-9 text-xs font-mono"
                   />
                 </div>
@@ -935,7 +1062,7 @@ export default function KoperasiPage() {
                     id="shu"
                     type="number"
                     value={formData.shu}
-                    onChange={(e) => setFormData({ ...formData, shu: Number(e.target.value) })}
+                    onChange={(e) => setFormData({ ...formData, shu: e.target.value })}
                     className="h-9 text-xs font-mono"
                   />
                 </div>
@@ -952,6 +1079,30 @@ export default function KoperasiPage() {
                     className="h-9 text-xs"
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <FileText className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                <span>5. Profil ODS & Metadata Pendataan</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ['bentukKoperasi', 'Bentuk Koperasi'], ['polaPengelolaan', 'Pola Pengelolaan'],
+                  ['sektorUsaha', 'Sektor Usaha'], ['kelompokKoperasi', 'Kelompok Koperasi'],
+                  ['kabupatenKota', 'Kabupaten/Kota'], ['kelurahanSumber', 'Kelurahan (Sumber)'],
+                  ['desaSumber', 'Desa (Sumber)'], ['kodePos', 'Kode Pos'], ['email', 'Email'],
+                  ['grade', 'Grade'], ['statusAkunOdsMandiri', 'Status Akun ODS Mandiri'],
+                ].map(([key, label]) => (
+                  <div className={`space-y-1.5 ${key === 'sektorUsaha' || key === 'statusAkunOdsMandiri' ? 'sm:col-span-2' : ''}`} key={key}>
+                    <Label htmlFor={key} className="text-xs font-medium">{label}</Label>
+                    <Input id={key} value={formData[key as keyof typeof formData] as string} onChange={(event) => setFormData({ ...formData, [key]: event.target.value })} className="h-9 text-xs" />
+                  </div>
+                ))}
+                <div className="space-y-1.5"><Label htmlFor="kuk" className="text-xs font-medium">KUK</Label><Input id="kuk" type="number" min="0" value={formData.kuk} onChange={(event) => setFormData({ ...formData, kuk: event.target.value })} className="h-9 text-xs" /></div>
+                <div className="space-y-1.5"><Label htmlFor="tahunPendataan" className="text-xs font-medium">Tahun Pendataan</Label><Input id="tahunPendataan" type="number" min="1900" max="2200" value={formData.tahunPendataan} onChange={(event) => setFormData({ ...formData, tahunPendataan: event.target.value })} className="h-9 text-xs" /></div>
+                <div className="space-y-1.5"><Label htmlFor="tanggalDiterima" className="text-xs font-medium">Tanggal Diterima</Label><Input id="tanggalDiterima" type="date" value={formData.tanggalDiterima} onChange={(event) => setFormData({ ...formData, tanggalDiterima: event.target.value })} className="h-9 text-xs" /></div>
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LandingPageContent } from './landing-page-content'
+import { redirect } from 'next/navigation'
 
 // Metadata for the landing page
 export const metadata: Metadata = {
@@ -19,5 +19,5 @@ export const metadata: Metadata = {
 }
 
 export default function LandingPage() {
-  return <LandingPageContent />
+  redirect('/login')
 }

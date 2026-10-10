@@ -26,30 +26,11 @@ export function SidebarNotification() {
         
         <div className="pr-6">
           <h3 className="flex items-center gap-3 font-semibold text-neutral-900 dark:text-neutral-100 mb-2 mt-1">
-            <Logo size={42} className="-mt-1" />
-            <div>
-              Welcome to{" "}
-              <a 
-                href="https://shadcnstore.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                ShadcnStore
-              </a>
-            </div>
+            <Logo size={36} className="-mt-1" />
+            <div>APLI DAKOP v2.0</div>
           </h3>
           <p className="text-sm text-muted-foreground dark:text-neutral-400 leading-relaxed">
-            Explore our premium Shadcn UI{" "}
-            <a 
-              href="https://shadcnstore.com/blocks" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary underline"
-            >
-              blocks
-            </a>{" "}
-            to build your next project faster.
+            Sistem Informasi Data Koperasi dan UMKM Kabupaten Konawe Selatan.
           </p>
         </div>
       </CardContent>

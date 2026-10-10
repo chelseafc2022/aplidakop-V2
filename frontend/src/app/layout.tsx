@@ -10,6 +10,14 @@ import { inter } from '@/lib/fonts';
 export const metadata: Metadata = {
   title: 'APLI DAKOP UMKM - Dinas Koperasi & UMKM Kab. Konawe Selatan',
   description: 'Aplikasi Data Koperasi dan Pelaku Usaha Mikro Kecil dan Menengah Kabupaten Konawe Selatan',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
+    apple: '/logo_only.png',
+  },
 };
 
 export default function RootLayout({

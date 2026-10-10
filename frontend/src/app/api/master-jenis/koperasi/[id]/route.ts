@@ -5,43 +5,49 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
   const { id } = await params;
   const body = await req.json();
 
   try {
     const res = await fetchFromBackend('/api/v1/master_jenis_koperasi/editData', {
       method: 'POST',
+      headers: { Authorization: authHeader },
       body: JSON.stringify({ ...body, id }),
     });
 
-    if (res.ok) {
-      return NextResponse.json(await res.json());
-    }
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[Master Jenis Koperasi] Error updating:', e);
+    return NextResponse.json({ message: 'Layanan Master Jenis Koperasi tidak tersedia.' }, { status: 503 });
   }
-
-  return NextResponse.json({ message: 'Jenis koperasi berhasil diperbarui' });
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
   const { id } = await params;
 
   try {
     const res = await fetchFromBackend('/api/v1/master_jenis_koperasi/removeData', {
       method: 'POST',
+      headers: { Authorization: authHeader },
       body: JSON.stringify({ id }),
     });
 
-    if (res.ok) {
-      return NextResponse.json(await res.json());
-    }
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[Master Jenis Koperasi] Error deleting:', e);
+    return NextResponse.json({ message: 'Layanan Master Jenis Koperasi tidak tersedia.' }, { status: 503 });
   }
-
-  return NextResponse.json({ message: 'Jenis koperasi berhasil dihapus' });
 }
