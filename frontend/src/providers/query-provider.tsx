@@ -11,7 +11,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 1000 * 60 * 3, // 3 minutes
+            gcTime: 1000 * 60 * 15, // retain inactive query data for 15 minutes
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
             retry: 1,
           },
         },

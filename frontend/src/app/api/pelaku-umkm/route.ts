@@ -10,10 +10,12 @@ export async function GET(req: NextRequest) {
   const desaId = searchParams.get('desaId') || '';
   const jenisUsahaId = searchParams.get('jenisUsahaId') || '';
   const periode = searchParams.get('periode') || '';
+  const backendPeriode = periode === '2021-2024' ? 'baseline' : periode;
 
   try {
     const res = await fetchFromBackend('/api/v1/master_pelaku/view', {
       method: 'POST',
+      signal: req.signal,
       body: JSON.stringify({
         page_limit: limit,
         data_ke: page,
@@ -21,13 +23,12 @@ export async function GET(req: NextRequest) {
         pencarian: search,
         desa_id: desaId,
         jenisusaha_id: jenisUsahaId,
-        periode: periode,
+        periode: backendPeriode,
       }),
     });
 
     if (res.ok) {
       const json = await res.json();
-      console.log('[DEBUG Pelaku UMKM] json received:', { hasData: !!json?.data, isArray: Array.isArray(json?.data), len: json?.data?.length, jsonKeys: Object.keys(json || {}) });
       const rawList = json?.data || [];
       const totalPages = Number(json?.jml_data) || 1;
       const total = typeof json?.total_data === 'number' ? json.total_data : totalPages * limit;
@@ -88,101 +89,18 @@ export async function GET(req: NextRequest) {
         },
       });
     }
+    const errorBody = await res.json().catch(() => ({}));
+    return NextResponse.json(
+      { message: errorBody.message || 'Backend gagal membaca data pelaku UMKM.' },
+      { status: res.status >= 400 ? res.status : 502 },
+    );
   } catch (e) {
     console.error('[Pelaku UMKM] Error fetching from backend:', e);
+    return NextResponse.json(
+      { message: 'Layanan data pelaku UMKM tidak tersedia.' },
+      { status: 503 },
+    );
   }
-
-  // Fallback data simulasi saat offline / remote DB disconnected
-  const fallbackList = [
-    {
-      id: '1',
-      namaPemilik: 'H. Sudirman',
-      nik: '7405031204850001',
-      namaUsaha: 'Toko Berkah Tani',
-      alamat: 'Jl. Poros Andoolo No. 12',
-      kecamatanId: '7405020',
-      desaId: '68746',
-      kecamatan: { id: '7405020', nama: 'ANDOOLO' },
-      desa: { id: '68746', nama: 'ANDOOLO' },
-      jenisUsaha: { id: '1', uraian: 'Pertanian & Perkebunan' },
-      tahunBerdiri: 2021,
-      isBaseline: true,
-      statusData: 'BASELINE',
-      periodeData: '2021-2024',
-      nib: '9120001234567',
-      pirt: '-',
-      halal: 'ID74050001',
-      haki: '-',
-      keterangan: 'Data Baseline Terverifikasi',
-      modalSendiri: 15000000,
-      modalLuar: 0,
-      modalUsaha: 15000000,
-      omsetTahun: 45000000,
-      jumlahTenagaKerja: 3,
-    },
-    {
-      id: '2',
-      namaPemilik: 'Siti Rahmawati',
-      nik: '7405085507900002',
-      namaUsaha: 'Keripik Pisang Mandiri',
-      alamat: 'Desa Onewila',
-      kecamatanId: '7405090',
-      desaId: '68749',
-      kecamatan: { id: '7405090', nama: 'RANOMEETO' },
-      desa: { id: '68749', nama: 'ONEWILA' },
-      jenisUsaha: { id: '2', uraian: 'Kuliner & Makanan Ringan' },
-      tahunBerdiri: 2022,
-      isBaseline: true,
-      statusData: 'BASELINE',
-      periodeData: '2021-2024',
-      nib: '9120002345678',
-      pirt: 'P-IRT 206740501',
-      halal: 'ID74050002',
-      haki: '-',
-      keterangan: 'Data Baseline Terverifikasi',
-      modalSendiri: 7500000,
-      modalLuar: 5000000,
-      modalUsaha: 12500000,
-      omsetTahun: 28000000,
-      jumlahTenagaKerja: 4,
-    },
-    {
-      id: '3',
-      namaPemilik: 'La Ode Baharuddin',
-      nik: '7405101009820003',
-      namaUsaha: 'Bengkel Logam Lestari',
-      alamat: 'Jl. Bahari Moramo',
-      kecamatanId: '7405070',
-      desaId: '68748',
-      kecamatan: { id: '7405070', nama: 'MORAMO' },
-      desa: { id: '68748', nama: 'MORAMO' },
-      jenisUsaha: { id: '3', uraian: 'Jasa & Bengkel' },
-      tahunBerdiri: 2020,
-      isBaseline: true,
-      statusData: 'BASELINE',
-      periodeData: '2021-2024',
-      nib: '9120003456789',
-      pirt: '-',
-      halal: '-',
-      haki: '-',
-      keterangan: 'Data Baseline Terverifikasi',
-      modalSendiri: 12000000,
-      modalLuar: 0,
-      modalUsaha: 12000000,
-      omsetTahun: 36000000,
-      jumlahTenagaKerja: 2,
-    },
-  ];
-
-  return NextResponse.json({
-    data: fallbackList,
-    meta: {
-      page: 1,
-      limit: 10,
-      total: 17671,
-      totalPages: 1768,
-    },
-  });
 }
 
 export async function POST(req: NextRequest) {

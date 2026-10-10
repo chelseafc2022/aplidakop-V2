@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -119,26 +119,54 @@ export default function PelakuUmkmPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // TanStack Query untuk 17rb+ data pelaku UMKM dengan server pagination & caching
-  const { data: umkmResponse, isLoading, isFetching } = useQuery({
+  const fetchPelakuPage = async (targetPage: number, signal?: AbortSignal) => {
+    const res = await api.get('/pelaku-umkm', {
+      params: {
+        page: targetPage,
+        limit,
+        search: debouncedSearch || undefined,
+        kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
+        desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
+        jenisUsahaId: selectedJenisUsaha !== 'all' ? selectedJenisUsaha : undefined,
+        periode: selectedPeriode !== 'all' ? selectedPeriode : undefined,
+      },
+      signal,
+    });
+    return res.data;
+  };
+
+  // Server pagination + cache. Request lama otomatis dibatalkan saat filter berubah.
+  const { data: umkmResponse, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ['pelaku-umkm', page, debouncedSearch, selectedKecamatan, selectedDesa, selectedJenisUsaha, selectedPeriode],
-    queryFn: async () => {
-      const res = await api.get('/pelaku-umkm', {
-        params: {
-          page,
-          limit,
-          search: debouncedSearch || undefined,
-          kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
-          desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
-          jenisUsahaId: selectedJenisUsaha !== 'all' ? selectedJenisUsaha : undefined,
-          periode: selectedPeriode !== 'all' ? selectedPeriode : undefined,
-        },
-      });
-      return res.data;
-    },
+    queryFn: ({ signal }) => fetchPelakuPage(page, signal),
     placeholderData: keepPreviousData,
-    staleTime: 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
+
+  // Prefetch halaman selanjutnya agar navigasi pagination terasa instan.
+  useEffect(() => {
+    const totalPages = Number(umkmResponse?.meta?.totalPages || 0);
+    if (page >= totalPages) return;
+
+    void queryClient.prefetchQuery({
+      queryKey: ['pelaku-umkm', page + 1, debouncedSearch, selectedKecamatan, selectedDesa, selectedJenisUsaha, selectedPeriode],
+      queryFn: ({ signal }) => fetchPelakuPage(page + 1, signal),
+      staleTime: 3 * 60 * 1000,
+      gcTime: 15 * 60 * 1000,
+    });
+  }, [
+    queryClient,
+    page,
+    umkmResponse?.meta?.totalPages,
+    debouncedSearch,
+    selectedKecamatan,
+    selectedDesa,
+    selectedJenisUsaha,
+    selectedPeriode,
+  ]);
 
   const handleResetFilter = () => {
     setSearchInput('');
@@ -690,7 +718,24 @@ export default function PelakuUmkmPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/30">
-              {isLoading ? (
+              {isError ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center">
+                    <div className="mx-auto max-w-md space-y-3">
+                      <AlertCircle className="mx-auto h-7 w-7 text-destructive" />
+                      <div>
+                        <p className="font-semibold text-foreground">Data UMKM gagal dimuat</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Tidak ada data simulasi yang ditampilkan. Periksa koneksi backend lalu coba kembali.
+                        </p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => refetch()}>
+                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Coba lagi
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ) : isLoading ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     Memuat data UMKM...
@@ -705,14 +750,12 @@ export default function PelakuUmkmPage() {
                       </div>
                       <div className="space-y-1">
                         <h4 className="font-semibold text-sm text-foreground">
-                          {selectedPeriode === '2025' || selectedPeriode === '2026'
-                            ? `Belum Ada Data Pemutakhiran Tahun ${selectedPeriode}`
+                          {selectedPeriode !== 'all'
+                            ? `Tidak Ada Data Tahun ${selectedPeriode}`
                             : 'Tidak Ada Data Pelaku UMKM'}
                         </h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          {selectedPeriode === '2025' || selectedPeriode === '2026'
-                            ? `Seluruh 17.671 data UMKM saat ini tersimpan di Data Baseline (2021–2024). Data tahun ${selectedPeriode} akan otomatis terisi begitu Anda mengunggah file pemutakhiran dinas melalui tombol Import.`
-                            : 'Tidak ditemukan data yang sesuai dengan kombinasi filter atau pencarian Anda. Silakan coba atur ulang filter.'}
+                          Tidak ditemukan data yang sesuai dengan periode, filter, atau pencarian Anda. Silakan atur ulang filter atau unggah data periode baru.
                         </p>
                       </div>
                       {selectedPeriode === '2025' || selectedPeriode === '2026' ? (
