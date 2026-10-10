@@ -7,7 +7,6 @@ import api from '@/lib/api';
 import {
   Store,
   Building2,
-  CheckCircle2,
   Filter,
   Plus,
   RefreshCw,
@@ -16,15 +15,13 @@ import {
   Users,
   ArrowUpRight,
   PieChart as PieIcon,
-  Award,
   FileText,
+  Award,
   Layers,
-  Sparkles,
   Coins,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
@@ -101,6 +98,8 @@ export default function DashboardPage() {
   const umkmByKecamatan = summary?.charts?.umkmByKecamatan || [];
   const umkmByJenisUsaha = summary?.charts?.umkmByJenisUsaha || [];
   const koperasiByJenis = summary?.charts?.koperasiByJenis || [];
+  const topUmkmByJenisUsaha = umkmByJenisUsaha.slice(0, 8);
+  const topKoperasiByJenis = koperasiByJenis.slice(0, 8);
   const breakdown = summary?.breakdown || {
     baseline: 0,
     periode2025: 0,
@@ -127,29 +126,14 @@ export default function DashboardPage() {
         ? 'Pemutakhiran 2026'
         : 'Semua Periode';
   return (
-    <div className="px-4 lg:px-8 space-y-6">
-      {/* Top Header & Executive Controls */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-3 border-b border-border/40">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-              Satu Data UMKM & Koperasi
-            </span>
-            <span className="text-xs text-muted-foreground hidden sm:inline">•</span>
-            <span className="text-xs text-muted-foreground hidden sm:inline">Kabupaten Konawe Selatan</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1 text-foreground">
-            Dashboard Eksekutif Statistik & Analitik
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Sistem Informasi Terpadu APLI DAKOP v2.0 — Dinas Koperasi dan Usaha Kecil Menengah
-          </p>
+    <div className="space-y-5 px-4 lg:px-8">
+      <div className="flex flex-col gap-4 border-b border-border/40 pb-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{periodLabel}</p>
         </div>
 
-        {/* Baris Kontrol Filter Statis & Tombol Aksi */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* Kotak Filter Kecamatan Statis (Lebar Pasti 195px) */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <div className="w-[195px] shrink-0">
             <Select value={selectedKecamatan} onValueChange={setSelectedKecamatan}>
               <SelectTrigger className="w-full h-9 text-xs">
@@ -167,8 +151,7 @@ export default function DashboardPage() {
             </Select>
           </div>
 
-          {/* Kotak Filter Tahun Statis (Lebar Pasti 130px) */}
-          <div className="w-[130px] shrink-0">
+          <div className="w-[160px] shrink-0">
             <Select value={selectedPeriode} onValueChange={setSelectedPeriode}>
               <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="Periode Data" />
@@ -182,7 +165,6 @@ export default function DashboardPage() {
             </Select>
           </div>
 
-          {/* Tombol Refresh Statis */}
           <Button
             variant="outline"
             size="sm"
@@ -193,67 +175,30 @@ export default function DashboardPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
 
-          {/* Tombol Cetak Dokumen Eksekutif Statis */}
-          <Button
+          {/* <Button
             variant="outline"
             size="sm"
             onClick={() => setIsPrintModalOpen(true)}
             className="h-9 px-3 text-xs border-border/80 hover:bg-muted shrink-0"
           >
             <Printer className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
-            Cetak Ringkasan
-          </Button>
+            Cetak
+          </Button> */}
 
-          {/* Tombol Tambah Data Statis */}
           <Button asChild size="sm" className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs shrink-0">
             <Link href="/pelaku-umkm">
               <Plus className="w-3.5 h-3.5 mr-1" />
-              Tambah Data
+              Tambah UMKM
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Baseline Status Notice & Smart Economy Banner */}
-      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-sky-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-            <CheckCircle2 className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground text-sm">
-                Ringkasan Data — {periodLabel}
-              </span>
-              <span className="hidden sm:inline-block bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                Terkunci & Valid
-              </span>
-            </div>
-            <p className="text-muted-foreground mt-0.5 leading-relaxed">
-              {isError ? (
-                <>Ringkasan gagal dimuat. Angka tidak diganti dengan data simulasi; silakan muat ulang.</>
-              ) : (
-                <>Filter saat ini menampilkan <strong>{totalUmkmCount.toLocaleString('id-ID')} Pelaku UMKM</strong> dan{' '}
-                <strong>{totalKoperasiCount.toLocaleString('id-ID')} Koperasi</strong>. UMKM dihitung berdasarkan periode pendataan, bukan tahun berdiri.</>
-              )}
-            </p>
-          </div>
+      {isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Data gagal dimuat. Silakan muat ulang.
         </div>
-        <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-          <Button asChild variant="outline" size="sm" className="h-8 text-xs bg-background/80">
-            <Link href="/inovasi">
-              <Award className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-              Portofolio Smart City
-            </Link>
-          </Button>
-          <Button asChild size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-500 text-white">
-            <Link href="/pelaku-umkm">
-              Kelola Data
-              <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Primary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -272,15 +217,7 @@ export default function DashboardPage() {
                 <Store className="w-6 h-6" />
               </div>
             </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                <TrendingUp className="w-3 h-3 text-emerald-500" />
-                {periodLabel}
-              </span>
-              <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                NIK tidak dihitung ganda
-              </span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">NIK unik</p>
           </CardContent>
         </Card>
 
@@ -299,12 +236,7 @@ export default function DashboardPage() {
                 <FileText className="w-6 h-6" />
               </div>
             </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground text-[11px]">Setiap periode dihitung</span>
-              <span className="text-[10px] font-medium text-blue-700 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
-                {periodLabel}
-              </span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Seluruh periode</p>
           </CardContent>
         </Card>
 
@@ -323,12 +255,7 @@ export default function DashboardPage() {
                 <Users className="w-6 h-6" />
               </div>
             </div>
-            <div className="flex items-center justify-between mt-3 text-xs pt-2 border-t border-border/40">
-              <span className="text-muted-foreground text-[11px]">Belum ada di baseline</span>
-              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                {periodLabel}
-              </span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Di luar baseline</p>
           </CardContent>
         </Card>
 
@@ -347,45 +274,22 @@ export default function DashboardPage() {
                 <Building2 className="w-6 h-6" />
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-2 text-[10px]">
-              <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 font-semibold text-emerald-700 dark:text-emerald-400">
-                {cards.koperasiAktif} Aktif/Sehat
-              </span>
-              <span className="rounded border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 font-semibold text-rose-600 dark:text-rose-400">
-                {cards.koperasiNonAktif} Tidak Aktif
-              </span>
-            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{cards.koperasiAktif} aktif · {cards.koperasiNonAktif} tidak aktif</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-blue-500/20 bg-gradient-to-r from-blue-500/5 via-background to-emerald-500/5 shadow-xs">
+      <Card className="border-border/60 shadow-xs">
         <CardHeader className="pb-3">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-base">Komposisi data per periode</CardTitle>
-              <CardDescription className="mt-1">
-                Pelaku unik menghapus duplikasi antarperiode; catatan pendataan tetap menghitung setiap kemunculan tahunan.
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="w-fit bg-background">Filter: {periodLabel}</Badge>
-          </div>
+          <CardTitle className="text-base">Data per periode</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <PeriodMetric label="Baseline 2021–2024" value={breakdown.baseline} tone="slate" />
             <PeriodMetric label="Snapshot 2025" value={breakdown.periode2025} tone="blue" />
             <PeriodMetric label="Pendataan ulang 2025" value={breakdown.pendataanUlang2025} tone="emerald" />
             <PeriodMetric label="Pelaku baru 2025" value={breakdown.pelakuBaru2025} tone="amber" />
             <PeriodMetric label="Snapshot 2026" value={breakdown.periode2026} tone="violet" />
-          </div>
-          <div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/80 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              Total catatan: <strong className="text-foreground">{breakdown.baseline.toLocaleString('id-ID')} + {breakdown.periode2025.toLocaleString('id-ID')} + {breakdown.periode2026.toLocaleString('id-ID')} = {breakdown.totalCatatanSemuaPeriode.toLocaleString('id-ID')}</strong>
-            </span>
-            <span>
-              <strong className="text-foreground">{breakdown.pendataanUlang2025.toLocaleString('id-ID')}</strong> pelaku baseline muncul kembali pada 2025.
-            </span>
           </div>
         </CardContent>
       </Card>
@@ -395,19 +299,7 @@ export default function DashboardPage() {
         {/* Sebaran Wilayah Kecamatan (2 Cols) */}
         <Card className="lg:col-span-2 border-border/60 shadow-xs">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-bold text-foreground">
-                  Sebaran Pelaku UMKM & Koperasi per Kecamatan
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Agregasi data riil pelaku usaha dan kelembagaan koperasi di 25 kecamatan Kabupaten Konawe Selatan
-                </CardDescription>
-              </div>
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                Total: 25 Kecamatan
-              </span>
-            </div>
+            <CardTitle className="text-base font-bold text-foreground">Sebaran per kecamatan</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[360px] w-full">
@@ -431,8 +323,8 @@ export default function DashboardPage() {
                     }}
                   />
                   <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="umkm" name="Pelaku UMKM (Unit)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="koperasi" name="Koperasi (Lembaga)" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="umkm" name="UMKM" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="koperasi" name="Koperasi" fill="#06b6d4" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -443,12 +335,9 @@ export default function DashboardPage() {
         <Card className="border-border/60 shadow-xs flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-bold flex items-center justify-between">
-              <span>Distribusi Sektor Usaha</span>
+              <span>Komposisi data</span>
               <PieIcon className="w-4 h-4 text-muted-foreground" />
             </CardTitle>
-            <CardDescription className="text-xs">
-              Komposisi jenis usaha UMKM dan klasifikasi bentuk koperasi
-            </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-between">
             <Tabs defaultValue="umkm" className="w-full">
@@ -463,7 +352,7 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={umkmByJenisUsaha}
+                        data={topUmkmByJenisUsaha}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
@@ -472,7 +361,7 @@ export default function DashboardPage() {
                         outerRadius={80}
                         paddingAngle={3}
                       >
-                        {umkmByJenisUsaha.map((_: any, index: number) => (
+                        {topUmkmByJenisUsaha.map((_: any, index: number) => (
                           <Cell key={`cell-umkm-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -488,7 +377,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-1.5 max-h-[120px] overflow-y-auto text-xs pr-1">
-                  {umkmByJenisUsaha.map((ju: any, idx: number) => (
+                  {topUmkmByJenisUsaha.map((ju: any, idx: number) => (
                     <div key={`umkm-kind-${ju.id || 'unknown'}-${idx}`} className="flex items-center justify-between text-muted-foreground py-0.5">
                       <div className="flex items-center gap-2 truncate">
                         <span
@@ -509,7 +398,7 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={koperasiByJenis}
+                        data={topKoperasiByJenis}
                         dataKey="value"
                         nameKey="name"
                         cx="50%"
@@ -518,7 +407,7 @@ export default function DashboardPage() {
                         outerRadius={80}
                         paddingAngle={3}
                       >
-                        {koperasiByJenis.map((_: any, index: number) => (
+                        {topKoperasiByJenis.map((_: any, index: number) => (
                           <Cell key={`cell-kop-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
                         ))}
                       </Pie>
@@ -534,7 +423,7 @@ export default function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
                 <div className="space-y-1.5 max-h-[120px] overflow-y-auto text-xs pr-1">
-                  {koperasiByJenis.map((kop: any, idx: number) => (
+                  {topKoperasiByJenis.map((kop: any, idx: number) => (
                     <div key={`koperasi-kind-${kop.id || 'unknown'}-${idx}`} className="flex items-center justify-between text-muted-foreground py-0.5">
                       <div className="flex items-center gap-2 truncate">
                         <span
@@ -553,21 +442,15 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Top 5 Sentra Ekonomi Kecamatan & Quick Action Hub */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Top 5 Sentra Ekonomi */}
         <Card className="border-border/60 shadow-xs">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-bold flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                Top 5 Sentra Ekonomi UMKM & Koperasi
+                Kecamatan teratas
               </span>
-              <span className="text-xs text-muted-foreground font-normal">Konawe Selatan Hubs</span>
             </CardTitle>
-            <CardDescription className="text-xs">
-              Kecamatan dengan konsentrasi aktivitas usaha mikro dan koperasi tertinggi
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3.5">
             {topKecamatan.map((kec: any, idx: number) => {
@@ -602,50 +485,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Card 2: Pusat Navigasi & Tata Kelola Smart City */}
         <Card className="border-border/60 shadow-xs flex flex-col">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Layers className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                Pusat Tata Kelola & Pipa Inovasi Daerah
-              </CardTitle>
-              <Badge variant="outline" className="text-[11px] font-medium border-teal-500/30 text-teal-700 dark:text-teal-400 bg-teal-500/5 hidden sm:inline-flex">
-                Smart City 2026
-              </Badge>
-            </div>
-            <CardDescription className="text-xs">
-              Akses cepat ke modul operasional harian, integrasi Satu Data, dan portofolio inovasi daerah
-            </CardDescription>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Layers className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Akses cepat
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2.5 flex-1 flex flex-col justify-between">
-            {/* Highlight Banner: Status Kesiapan Inovasi Smart City */}
-            <Link
-              href="/inovasi"
-              className="p-2.5 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent hover:border-amber-500/50 hover:bg-amber-500/10 transition-all flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                      Kesiapan Portofolio Smart Economy 2026
-                    </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                      10/10 Terpenuhi
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Skor Kematangan Inovasi 98% • Lolos 10 Indikator Evaluasi Kemendagri & SPBE
-                  </p>
-                </div>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
-            </Link>
-
-            {/* Modul 1: Basis Data UMKM */}
             <Link
               href="/pelaku-umkm"
               className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-emerald-500/40 bg-muted/20 hover:bg-emerald-500/5 transition-all flex items-center justify-between group"
@@ -657,15 +504,9 @@ export default function DashboardPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="text-xs font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
-                      Basis Data Pelaku UMKM ({totalUmkmCount.toLocaleString('id-ID')} Data)
+                      Pelaku UMKM ({totalUmkmCount.toLocaleString('id-ID')})
                     </h4>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 shrink-0 hidden xs:inline">
-                      Satu Data
-                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Filter 25 kecamatan, validasi NIK unik terverifikasi, batch import & export laporan
-                  </p>
                 </div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
@@ -683,15 +524,9 @@ export default function DashboardPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="text-xs font-semibold text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors truncate">
-                      Buku Induk Koperasi Daerah ({totalKoperasiCount.toLocaleString('id-ID')} Lembaga)
+                      Data Koperasi ({totalKoperasiCount.toLocaleString('id-ID')})
                     </h4>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 shrink-0 hidden xs:inline">
-                      RAT & Legalitas
-                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Status keaktifan RAT, nomor badan hukum Kemenkop, pengurus, dan modal usaha
-                  </p>
                 </div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-teal-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
@@ -709,15 +544,9 @@ export default function DashboardPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="text-xs font-semibold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                      Fasilitasi Pembiayaan & Akses Modal
+                      Pembiayaan
                     </h4>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 shrink-0 hidden xs:inline">
-                      KUR & Usaha
-                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Penyaluran KUR, histori pembiayaan perbankan, & rekomendasi dinas terpadu
-                  </p>
                 </div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
@@ -735,15 +564,9 @@ export default function DashboardPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className="text-xs font-semibold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
-                      Dokumen Portofolio & Matriks Inovasi
+                      Inovasi Smart City
                     </h4>
-                    <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0 hidden xs:inline">
-                      Before/After
-                    </span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">
-                    Matriks transformasi Before vs After, 10 kriteria evaluasi & cetak portofolio PDF
-                  </p>
                 </div>
               </div>
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
