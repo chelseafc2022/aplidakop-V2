@@ -16,6 +16,7 @@ import {
   Users,
   UserRoundSearch,
   ListChecks,
+  ClipboardCheck,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -73,6 +74,29 @@ const navigationData = {
       ],
     },
     {
+      label: "Verifikasi",
+      items: [
+        {
+          title: "Pendaftaran UMKM",
+          url: "/verifikasi/pendaftaran-umkm",
+          icon: ListChecks,
+          administratorOnly: true,
+        },
+        {
+          title: "Bantuan UMKM",
+          url: "/verifikasi/bantuan-umkm",
+          icon: ClipboardCheck,
+          administratorOnly: true,
+        },
+        {
+          title: "Verifikasi Koperasi",
+          url: "/verifikasi/koperasi",
+          icon: ShieldCheck,
+          administratorOnly: true,
+        },
+      ],
+    },
+    {
       label: "Pembiayaan",
       items: [
         {
@@ -119,12 +143,6 @@ const navigationData = {
           title: "NIK Kembar UMKM",
           url: "/management/nik-kembar",
           icon: UserRoundSearch,
-          administratorOnly: true,
-        },
-        {
-          title: "Verifikasi Koperasi",
-          url: "/management/verifikasi-koperasi",
-          icon: ListChecks,
           administratorOnly: true,
         },
       ],
