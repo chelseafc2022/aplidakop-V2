@@ -105,10 +105,11 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('MENUNGGU');
+  const [status, setStatus] = useState('');
   const [detail, setDetail] = useState<Detail | null>(null);
   const [notes, setNotes] = useState('');
   const [decision, setDecision] = useState('DISETUJUI');
+  const [isEditingDecision, setIsEditingDecision] = useState(false);
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -149,6 +150,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
   async function open(id: string) {
     if (opening) return;
     setOpening(true);
+    setIsEditingDecision(false);
     try {
       const resData = await request(`/${id}`);
       setDetail(resData.data);
@@ -198,10 +200,13 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
       });
       toast.success(
         decision === 'DISETUJUI'
-          ? 'Pengajuan berhasil disetujui dan dicatat.'
-          : 'Pengajuan telah ditolak beserta catatan verifikasi.'
+          ? 'Pengajuan berhasil disetujui.'
+          : decision === 'DITOLAK'
+          ? 'Pengajuan ditolak dan tetap tersimpan dalam riwayat.'
+          : 'Status pengajuan dikembalikan ke antrean menunggu verifikasi.'
       );
       setDetail(null);
+      setIsEditingDecision(false);
       await refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Verifikasi gagal.');
@@ -606,43 +611,68 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
 
               {/* Bagian 4: Form Keputusan atau Catatan Hasil Verifikasi */}
               <section className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                {detail.status === 'MENUNGGU' ? (
+                {detail.status === 'MENUNGGU' || isEditingDecision ? (
                   <div className="space-y-4">
-                    <div>
-                      <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                        Keputusan Verifikasi
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        {jenis === 'bantuan'
-                          ? 'Persetujuan memvalidasi dokumen pemohon. Realisasi dicatat melalui menu Pembiayaan UMKM.'
-                          : 'Persetujuan akan memverifikasi berkas dan otomatis mencatat pelaku usaha baru ke database Master.'}
-                      </p>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                          {isEditingDecision ? 'Perbarui Keputusan Verifikasi' : 'Keputusan Verifikasi'}
+                        </h2>
+                        <p className="text-xs text-muted-foreground">
+                          {jenis === 'bantuan'
+                            ? 'Persetujuan memvalidasi dokumen pemohon. Realisasi dicatat melalui menu Pembiayaan UMKM.'
+                            : 'Persetujuan akan memverifikasi berkas dan otomatis mencatat pelaku usaha baru ke database Master.'}
+                        </p>
+                      </div>
+                      {isEditingDecision && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setIsEditingDecision(false)}
+                          className="h-7 text-xs text-muted-foreground"
+                        >
+                          Batal Ubah
+                        </Button>
+                      )}
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2 sm:grid-cols-3">
                       <button
                         type="button"
                         onClick={() => setDecision('DISETUJUI')}
-                        className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium transition-all ${
                           decision === 'DISETUJUI'
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 shadow-sm dark:text-emerald-400'
                             : 'bg-background hover:bg-muted text-muted-foreground'
                         }`}
                       >
-                        <CheckCircle2 className="size-4 text-emerald-600" />
-                        Setujui Pengajuan
+                        <CheckCircle2 className="size-3.5 text-emerald-600" />
+                        Setujui Berkas
                       </button>
                       <button
                         type="button"
                         onClick={() => setDecision('DITOLAK')}
-                        className={`flex items-center justify-center gap-2 rounded-lg border p-3 text-sm font-medium transition-all ${
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium transition-all ${
                           decision === 'DITOLAK'
                             ? 'border-rose-500 bg-rose-500/10 text-rose-700 shadow-sm dark:text-rose-400'
                             : 'bg-background hover:bg-muted text-muted-foreground'
                         }`}
                       >
-                        <XCircle className="size-4 text-rose-600" />
-                        Tolak Pengajuan
+                        <XCircle className="size-3.5 text-rose-600" />
+                        Tolak Berkas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDecision('MENUNGGU')}
+                        className={`flex items-center justify-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium transition-all ${
+                          decision === 'MENUNGGU'
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-700 shadow-sm dark:text-amber-400'
+                            : 'bg-background hover:bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        <Clock className="size-3.5 text-amber-600" />
+                        Kembalikan Menunggu
                       </button>
                     </div>
 
@@ -670,16 +700,31 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2 font-semibold text-foreground">
-                      {detail.status === 'DISETUJUI' ? (
-                        <CheckCircle2 className="size-4 text-emerald-600" />
-                      ) : (
-                        <XCircle className="size-4 text-rose-600" />
-                      )}
-                      Status Keputusan: {labels[detail.status]}
+                  <div className="space-y-3 text-xs">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2 font-semibold text-foreground">
+                        {detail.status === 'DISETUJUI' ? (
+                          <CheckCircle2 className="size-4 text-emerald-600" />
+                        ) : (
+                          <XCircle className="size-4 text-rose-600" />
+                        )}
+                        Status Saat Ini: {labels[detail.status]}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDecision(detail.status);
+                          setNotes(detail.catatan || '');
+                          setIsEditingDecision(true);
+                        }}
+                        className="h-8 gap-1.5 text-xs font-medium"
+                      >
+                        <RefreshCw className="size-3" /> Ubah Keputusan / Tinjau Ulang
+                      </Button>
                     </div>
-                    <div className="rounded bg-background p-3 text-foreground">
+                    <div className="rounded-lg border bg-background p-3 text-foreground">
                       <strong>Catatan Petugas:</strong> {detail.catatan || 'Tidak ada catatan khusus.'}
                     </div>
                     <div className="text-muted-foreground">
@@ -716,7 +761,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
               >
                 Tutup
               </Button>
-              {detail?.status === 'MENUNGGU' && (
+              {(detail?.status === 'MENUNGGU' || isEditingDecision) && (
                 <Button
                   type="button"
                   size="sm"
