@@ -4,6 +4,26 @@ import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { escapeCsvCell } from '@/lib/csv';
+
+const EXPORT_PAGE_SIZE = 500;
+const MAX_EXPORT_PAGES = 100;
+
+async function fetchAllPelaku(params: Record<string, string | number | undefined>) {
+  const first = await api.get('/pelaku-umkm', { params: { ...params, page: 1, limit: EXPORT_PAGE_SIZE } });
+  const data = [...(first.data?.data || [])];
+  const requestedPages = Number(first.data?.meta?.totalPages || 1);
+  if (requestedPages > MAX_EXPORT_PAGES) {
+    throw new Error('Hasil melebihi 50.000 baris. Persempit filter sebelum mengekspor atau mencetak.');
+  }
+  const totalPages = Math.max(1, requestedPages);
+  for (let page = 2; page <= totalPages; page += 1) {
+    const response = await api.get('/pelaku-umkm', {
+      params: { ...params, page, limit: EXPORT_PAGE_SIZE },
+    });
+    data.push(...(response.data?.data || []));
+  }
+  return data;
+}
 import { useDebounce } from '@/hooks/use-debounce';
 import { toast } from 'sonner';
 import {
@@ -30,6 +50,7 @@ import {
   Printer,
   Download,
   Coins,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +60,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function PelakuUmkmPage() {
   const queryClient = useQueryClient();
@@ -139,15 +166,11 @@ export default function PelakuUmkmPage() {
     queryKey: ['print-umkm-data', printKecamatan, printDesa],
     queryFn: async () => {
       if (!printKecamatan || printKecamatan === 'all') return null;
-      const res = await api.get('/pelaku-umkm', {
-        params: {
-          page: 1,
-          limit: 10000,
-          kecamatanId: printKecamatan,
-          desaId: printDesa !== 'all' ? printDesa : undefined,
-        },
+      const data = await fetchAllPelaku({
+        kecamatanId: printKecamatan,
+        desaId: printDesa !== 'all' ? printDesa : undefined,
       });
-      return res.data;
+      return { data };
     },
     enabled: isPrintModalOpen && !!printKecamatan && printKecamatan !== 'all',
     staleTime: 60 * 1000,
@@ -173,6 +196,277 @@ export default function PelakuUmkmPage() {
       setPrintDesa('all');
     }
     setIsPrintModalOpen(true);
+  };
+
+  const handlePrintDocument = () => {
+    if (!printKecamatan || printKecamatan === 'all' || isPrintLoading || printItems.length === 0) {
+      toast.error('Silakan tentukan filter wilayah terlebih dahulu atau tunggu data termuat');
+      return;
+    }
+
+    const oldIframe = document.getElementById('print-rekap-iframe');
+    if (oldIframe) {
+      oldIframe.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-rekap-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-10000px';
+    iframe.style.left = '-10000px';
+    iframe.style.width = '1200px';
+    iframe.style.height = '800px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    const wilayahTitle = namaDesaPrint
+      ? `DESA/KELURAHAN ${namaDesaPrint.toUpperCase()}, KECAMATAN ${namaKecamatanPrint.toUpperCase()}`
+      : `KECAMATAN ${namaKecamatanPrint.toUpperCase()}`;
+
+    const dateToday = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const rowsHtml = printItems
+      .map(
+        (item: any, idx: number) => `
+        <tr>
+          <td style="text-align: center; font-size: 8pt;">${idx + 1}</td>
+          <td>
+            <div style="font-weight: bold; font-size: 8.5pt;">${item.namaPemilik || '-'}</div>
+            <div style="font-family: monospace; font-size: 7.5pt; color: #444;">${item.nik || '-'}</div>
+          </td>
+          <td><div style="font-weight: 500; font-size: 8.5pt;">${item.namaUsaha || '-'}</div></td>
+          <td style="font-size: 8pt;">${item.jenisUsaha?.uraian || '-'}</td>
+          <td>
+            <div style="font-size: 8pt;">${item.kecamatan?.nama || '-'}</div>
+            <div style="font-size: 7.5pt; color: #555;">${item.desa?.nama || '-'}</div>
+          </td>
+          <td style="text-align: center; font-family: monospace; font-size: 7.5pt;">${item.nib && item.nib !== '-' ? item.nib : 'Belum Ada'}</td>
+          <td style="text-align: right; font-family: monospace; font-size: 8pt;">Rp ${Number(item.modalSendiri || 0).toLocaleString('id-ID')}</td>
+          <td style="text-align: right; font-family: monospace; font-size: 8pt;">Rp ${Number(item.omsetTahun || 0).toLocaleString('id-ID')}</td>
+          <td style="text-align: center;"><span style="font-size: 7pt; font-weight: bold; background: #e5e7eb; padding: 2px 4px; border-radius: 3px;">${item.statusData || 'BASELINE'}</span></td>
+        </tr>
+      `
+      )
+      .join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Rekapitulasi Data Pelaku UMKM - ${wilayahTitle}</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 10mm 12mm 10mm 12mm;
+          }
+          * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            font-size: 8.5pt;
+            line-height: 1.25;
+          }
+          .kop-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px double #000;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+          }
+          .kop-logo {
+            width: 70px;
+            height: auto;
+            max-height: 80px;
+            object-fit: contain;
+          }
+          .kop-text {
+            flex: 1;
+            text-align: center;
+            padding: 0 12px;
+          }
+          .kop-h2 {
+            font-size: 10.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+          }
+          .kop-h1 {
+            font-size: 13pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 2px 0;
+            color: #064e3b;
+          }
+          .kop-p1 {
+            font-size: 8pt;
+            color: #333;
+            margin: 1px 0;
+          }
+          .kop-p2 {
+            font-size: 7.5pt;
+            color: #555;
+            margin: 0;
+          }
+          .kop-spacer {
+            width: 70px;
+          }
+          .judul-container {
+            text-align: center;
+            margin: 8px 0 12px 0;
+          }
+          .judul-main {
+            font-size: 10.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-decoration: underline;
+            margin: 0;
+          }
+          .judul-sub {
+            font-size: 9.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 3px 0 0 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          thead {
+            display: table-header-group;
+          }
+          tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          th {
+            border: 1px solid #4b5563;
+            background-color: #f3f4f6 !important;
+            color: #111827;
+            font-weight: bold;
+            padding: 5px 6px;
+            text-align: left;
+            font-size: 8pt;
+          }
+          td {
+            border: 1px solid #6b7280;
+            padding: 4px 6px;
+            vertical-align: middle;
+          }
+          .signature-box {
+            margin-top: 24px;
+            display: flex;
+            justify-content: flex-end;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          .signature-content {
+            text-align: center;
+            min-width: 250px;
+            font-size: 9pt;
+          }
+          .signature-space {
+            height: 55px;
+          }
+          .signature-name {
+            font-weight: bold;
+            text-decoration: underline;
+            font-size: 9.5pt;
+            margin: 0;
+          }
+          .signature-nip {
+            font-family: monospace;
+            font-size: 8pt;
+            margin: 2px 0 0 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="kop-container">
+          <img src="/logo_konsel.png" class="kop-logo" alt="Logo Konsel" />
+          <div class="kop-text">
+            <div class="kop-h2">PEMERINTAH KABUPATEN KONAWE SELATAN</div>
+            <div class="kop-h1">DINAS KOPERASI DAN USAHA KECIL MENENGAH</div>
+            <div class="kop-p1">Kompleks Perkantoran Pemerintah Daerah Kabupaten Konawe Selatan, Andoolo 93381</div>
+            <div class="kop-p2">Laman Resmi: dinkop.konaweselatankab.go.id • Email: dinkop@konaweselatankab.go.id</div>
+          </div>
+          <div class="kop-spacer"></div>
+        </div>
+
+        <div class="judul-container">
+          <div class="judul-main">REKAPITULASI DATA PELAKU USAHA MIKRO, KECIL, DAN MENENGAH (UMKM)</div>
+          <div class="judul-sub">${wilayahTitle}</div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 26px; text-align: center;">No</th>
+              <th style="width: 170px;">NIK & Nama Pemilik</th>
+              <th style="width: 150px;">Nama Usaha</th>
+              <th style="width: 120px;">Sektor Usaha</th>
+              <th style="width: 140px;">Kecamatan / Desa</th>
+              <th style="width: 90px; text-align: center;">NIB</th>
+              <th style="width: 100px; text-align: right;">Modal Sendiri</th>
+              <th style="width: 100px; text-align: right;">Omset/Thn</th>
+              <th style="width: 70px; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+
+        <div class="signature-box">
+          <div class="signature-content">
+            <p style="margin: 0;">Andoolo, ${dateToday}</p>
+            <p style="margin: 3px 0; font-weight: 500;">Mengetahui,</p>
+            <p style="margin: 0; font-weight: bold;">Kepala Dinas Koperasi dan UKM</p>
+            <p style="margin: 0; font-size: 8pt;">Kabupaten Konawe Selatan</p>
+            <div class="signature-space"></div>
+            <p class="signature-name">Drs. H. AMRAN, MM.Pub</p>
+            <p class="signature-nip">NIP. 19700808 199403 1 009</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    const triggerPrint = () => {
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      }, 250);
+    };
+
+    const logoImg = doc.querySelector('img');
+    if (logoImg && !logoImg.complete) {
+      logoImg.onload = triggerPrint;
+      logoImg.onerror = triggerPrint;
+    } else {
+      triggerPrint();
+    }
   };
 
   const fetchPelakuPage = async (targetPage: number, signal?: AbortSignal) => {
@@ -355,24 +649,18 @@ export default function PelakuUmkmPage() {
     }
   };
 
-  const handleExportData = async () => {
+  const handleExportData = async (format: 'xlsx' | 'csv' = 'xlsx') => {
     try {
       setIsExporting(true);
-      toast.info('Sedang mengambil seluruh data UMKM untuk diekspor...');
+      toast.info(`Sedang menyiapkan data UMKM untuk diekspor ke ${format === 'xlsx' ? 'Excel (.xlsx)' : 'CSV (.csv)'}...`);
 
-      const res = await api.get('/pelaku-umkm', {
-        params: {
-          page: 1,
-          limit: 50000,
-          search: debouncedSearch || undefined,
-          kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
-          desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
-          jenisUsahaId: selectedJenisUsaha !== 'all' ? selectedJenisUsaha : undefined,
-          periode: selectedPeriode !== 'all' ? selectedPeriode : undefined,
-        },
+      const listToExport = await fetchAllPelaku({
+        search: debouncedSearch || undefined,
+        kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
+        desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
+        jenisUsahaId: selectedJenisUsaha !== 'all' ? selectedJenisUsaha : undefined,
+        periode: selectedPeriode !== 'all' ? selectedPeriode : undefined,
       });
-
-      const listToExport = res.data?.data || [];
       if (!listToExport || listToExport.length === 0) {
         toast.error('Tidak ada data pelaku UMKM untuk diexport');
         return;
@@ -401,11 +689,11 @@ export default function PelakuUmkmPage() {
       ];
 
       const rows = listToExport.map((item: any) => [
-        item.nik || '-',
-        item.kk || '-',
+        item.nik ? String(item.nik) : '-',
+        item.kk ? String(item.kk) : '-',
         item.namaPemilik || '',
         item.namaUsaha || '',
-        item.nohp || '-',
+        item.nohp ? String(item.nohp) : '-',
         item.kecamatan?.nama || '-',
         item.desa?.nama || '-',
         item.jenisUsaha?.uraian || '-',
@@ -422,22 +710,59 @@ export default function PelakuUmkmPage() {
         item.periodeData || '2021-2024',
       ]);
 
-      const csvContent =
-        '\uFEFF' +
-        headers.map(escapeCsvCell).join(',') +
-        '\n' +
-        rows.map((row: any[]) => row.map(escapeCsvCell).join(',')).join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
       const dateStr = new Date().toISOString().split('T')[0];
-      link.setAttribute('download', `Rekap_Data_UMKM_Konsel_${dateStr}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success(`Berhasil mengekspor seluruh data (${listToExport.length.toLocaleString('id-ID')} UMKM) ke file Excel/CSV`);
+
+      if (format === 'xlsx') {
+        const ExcelJS = await import('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Data Pelaku UMKM');
+        worksheet.addRows([headers, ...rows]);
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+        // Auto width for columns
+        const colWidths = headers.map((header, idx) => {
+          let maxLen = header.length;
+          const sampleRows = rows.slice(0, 100);
+          for (const r of sampleRows) {
+            const valStr = r[idx] !== null && r[idx] !== undefined ? String(r[idx]) : '';
+            if (valStr.length > maxLen) {
+              maxLen = valStr.length;
+            }
+          }
+          return Math.min(Math.max(maxLen + 2, 12), 40);
+        });
+        worksheet.columns.forEach((column, index) => { column.width = colWidths[index]; });
+
+        const excelBuffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([excelBuffer as BlobPart], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Rekap_Data_UMKM_Konsel_${dateStr}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success(`Berhasil mengekspor seluruh data (${listToExport.length.toLocaleString('id-ID')} UMKM) ke format Excel (.xlsx)`);
+      } else {
+        const csvContent =
+          '\uFEFF' +
+          headers.map(escapeCsvCell).join(',') +
+          '\n' +
+          rows.map((row: any[]) => row.map(escapeCsvCell).join(',')).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Rekap_Data_UMKM_Konsel_${dateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success(`Berhasil mengekspor seluruh data (${listToExport.length.toLocaleString('id-ID')} UMKM) ke format CSV (.csv)`);
+      }
     } catch (err: any) {
       console.error('[Export Error]:', err);
       toast.error(err.response?.data?.message || err.message || 'Gagal mengekspor data UMKM');
@@ -565,20 +890,42 @@ export default function PelakuUmkmPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportData}
-            disabled={isExporting}
-            className="h-9 text-xs border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-          >
-            {isExporting ? (
-              <Loader2 className="w-4 h-4 mr-1.5 text-emerald-600 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="w-4 h-4 mr-1.5 text-emerald-600" />
-            )}
-            {isExporting ? 'Mengekspor Seluruh Data...' : 'Export Excel (.csv)'}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isExporting}
+                className="h-9 text-xs border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-1.5 text-emerald-600 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="w-4 h-4 mr-1.5 text-emerald-600" />
+                )}
+                {isExporting ? 'Mengekspor Data...' : 'Export Data'}
+                <ChevronDown className="w-3.5 h-3.5 ml-1.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => handleExportData('xlsx')}
+                disabled={isExporting}
+                className="cursor-pointer text-xs py-2 font-medium"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
+                Format Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleExportData('csv')}
+                disabled={isExporting}
+                className="cursor-pointer text-xs py-2 font-medium"
+              >
+                <FileDown className="w-4 h-4 mr-2 text-teal-600" />
+                Format CSV (.csv)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             variant="outline"
             size="sm"
@@ -1527,7 +1874,7 @@ export default function PelakuUmkmPage() {
               </div>
               <Button
                 size="sm"
-                onClick={() => window.print()}
+                onClick={handlePrintDocument}
                 disabled={!printKecamatan || printKecamatan === 'all' || isPrintLoading || printItems.length === 0}
                 className="bg-blue-600 hover:bg-blue-500 text-white"
               >
@@ -1613,7 +1960,6 @@ export default function PelakuUmkmPage() {
               {/* Kop Surat Kedinasan Ber-Logo Konsel */}
               <div className="flex items-center justify-between border-b-4 border-double border-black pb-3 mb-4">
                 <div className="shrink-0 w-20 flex justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src="/logo_konsel.png"
                     alt="Logo Kabupaten Konawe Selatan"
@@ -1731,7 +2077,7 @@ export default function PelakuUmkmPage() {
               Tutup
             </Button>
             <Button
-              onClick={() => window.print()}
+              onClick={handlePrintDocument}
               disabled={!printKecamatan || printKecamatan === 'all' || isPrintLoading || printItems.length === 0}
               className="bg-blue-600 hover:bg-blue-500 text-white"
             >

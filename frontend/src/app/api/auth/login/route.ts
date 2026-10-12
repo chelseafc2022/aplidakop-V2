@@ -12,7 +12,7 @@ import { sealSession, SESSION_COOKIE_NAME, sessionCookieOptions } from '@/lib/se
 
 const loginSchema = z.object({
   username: z.string().trim().min(3).max(100),
-  password: z.string().min(8).max(256),
+  password: z.string().min(6).max(256),
 }).strict();
 
 export async function POST(request: NextRequest) {
@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
     if (!backendResponse.ok || typeof data.token !== 'string') {
       const status = backendResponse.status === 429 ? 429 : 401;
       return NextResponse.json(
-        { message: status === 429 ? 'Terlalu banyak percobaan login.' : 'Username atau kata sandi salah.' },
+        {
+          message: data.message || (status === 429 ? 'Terlalu banyak percobaan login.' : 'Username atau kata sandi salah.'),
+          code: data.code || undefined,
+        },
         { status },
       );
     }

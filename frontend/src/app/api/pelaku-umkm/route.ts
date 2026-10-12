@@ -6,7 +6,7 @@ import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
-  const limit = Math.max(1, Math.min(50_000, Number(searchParams.get('limit') || 10) || 10));
+  const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 10) || 10));
   const search = (searchParams.get('search') || '').trim().slice(0, 200);
   const kecamatanId = (searchParams.get('kecamatanId') || '').trim().slice(0, 64);
   const desaId = (searchParams.get('desaId') || '').trim().slice(0, 64);

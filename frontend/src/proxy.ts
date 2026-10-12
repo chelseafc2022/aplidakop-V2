@@ -8,6 +8,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const PUBLIC_API_PATHS = new Set(['/api/auth/login', '/api/auth/logout']);
 
 function requestIp(request: NextRequest): string {
+  if (process.env.TRUST_PROXY_HEADERS !== 'true') return 'untrusted-proxy';
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
@@ -41,9 +42,9 @@ function isSameOrigin(request: NextRequest): boolean {
 
   try {
     const originUrl = new URL(origin);
-    const expectedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
     const configuredOrigin = process.env.APP_ORIGIN?.trim();
-    return originUrl.host === expectedHost || (!!configuredOrigin && origin === configuredOrigin);
+    if (configuredOrigin) return origin === configuredOrigin;
+    return originUrl.host === request.headers.get('host');
   } catch {
     return false;
   }
@@ -56,7 +57,7 @@ function apiError(message: string, status: number, headers?: HeadersInit) {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith('/api/');
   const isUnsafe = !SAFE_METHODS.has(request.method);
