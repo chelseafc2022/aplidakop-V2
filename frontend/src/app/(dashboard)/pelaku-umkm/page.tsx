@@ -61,7 +61,10 @@ export default function PelakuUmkmPage() {
   const [importYear, setImportYear] = useState('2025');
   const [importFile, setImportFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printKecamatan, setPrintKecamatan] = useState<string>('');
+  const [printDesa, setPrintDesa] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -119,6 +122,58 @@ export default function PelakuUmkmPage() {
     enabled: !!formData.kecamatanId,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Query desa khusus filter pada modal cetak rekapitulasi dinas
+  const { data: printDesaList, isLoading: isPrintDesaLoading } = useQuery({
+    queryKey: ['print-desa-list', printKecamatan],
+    queryFn: async () => {
+      if (!printKecamatan || printKecamatan === 'all') return [];
+      return (await api.get(`/wilayah/desa/${printKecamatan}`)).data;
+    },
+    enabled: isPrintModalOpen && !!printKecamatan && printKecamatan !== 'all',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Query seluruh data UMKM untuk cetak rekapitulasi dinas berdasarkan filter kecamatan/desa
+  const { data: printDataResponse, isLoading: isPrintLoading } = useQuery({
+    queryKey: ['print-umkm-data', printKecamatan, printDesa],
+    queryFn: async () => {
+      if (!printKecamatan || printKecamatan === 'all') return null;
+      const res = await api.get('/pelaku-umkm', {
+        params: {
+          page: 1,
+          limit: 10000,
+          kecamatanId: printKecamatan,
+          desaId: printDesa !== 'all' ? printDesa : undefined,
+        },
+      });
+      return res.data;
+    },
+    enabled: isPrintModalOpen && !!printKecamatan && printKecamatan !== 'all',
+    staleTime: 60 * 1000,
+  });
+
+  const printItems = printDataResponse?.data || [];
+  const selectedPrintKecamatanObj = kecamatanList?.find(
+    (k: any) => String(k.id || k.kecamatan_id) === String(printKecamatan)
+  );
+  const namaKecamatanPrint = selectedPrintKecamatanObj?.nama || selectedPrintKecamatanObj?.nama_kecamatan || '';
+
+  const selectedPrintDesaObj = printDesaList?.find(
+    (d: any) => String(d.id || d.des_kel_id) === String(printDesa)
+  );
+  const namaDesaPrint = printDesa !== 'all' ? (selectedPrintDesaObj?.nama || selectedPrintDesaObj?.nama_des_kel || '') : '';
+
+  const handleOpenPrintModal = () => {
+    if (selectedKecamatan && selectedKecamatan !== 'all') {
+      setPrintKecamatan(selectedKecamatan);
+      setPrintDesa(selectedDesa || 'all');
+    } else {
+      setPrintKecamatan('');
+      setPrintDesa('all');
+    }
+    setIsPrintModalOpen(true);
+  };
 
   const fetchPelakuPage = async (targetPage: number, signal?: AbortSignal) => {
     const res = await api.get('/pelaku-umkm', {
@@ -300,73 +355,95 @@ export default function PelakuUmkmPage() {
     }
   };
 
-  const handleExportData = () => {
-    const listToExport = umkmResponse?.data || [];
-    if (!listToExport || listToExport.length === 0) {
-      toast.error('Tidak ada data pelaku UMKM untuk diexport');
-      return;
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true);
+      toast.info('Sedang mengambil seluruh data UMKM untuk diekspor...');
+
+      const res = await api.get('/pelaku-umkm', {
+        params: {
+          page: 1,
+          limit: 50000,
+          search: debouncedSearch || undefined,
+          kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
+          desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
+          jenisUsahaId: selectedJenisUsaha !== 'all' ? selectedJenisUsaha : undefined,
+          periode: selectedPeriode !== 'all' ? selectedPeriode : undefined,
+        },
+      });
+
+      const listToExport = res.data?.data || [];
+      if (!listToExport || listToExport.length === 0) {
+        toast.error('Tidak ada data pelaku UMKM untuk diexport');
+        return;
+      }
+
+      const headers = [
+        'NIK',
+        'No KK',
+        'Nama Pemilik',
+        'Nama Usaha',
+        'No HP',
+        'Kecamatan',
+        'Desa / Kelurahan',
+        'Jenis Usaha',
+        'Tahun Berdiri',
+        'Modal Sendiri (Rp)',
+        'Modal Luar (Rp)',
+        'Omset Tahunan (Rp)',
+        'Tenaga Kerja',
+        'NIB',
+        'PIRT',
+        'Sertifikat Halal',
+        'HAKI',
+        'Status Data',
+        'Periode Data',
+      ];
+
+      const rows = listToExport.map((item: any) => [
+        item.nik || '-',
+        item.kk || '-',
+        item.namaPemilik || '',
+        item.namaUsaha || '',
+        item.nohp || '-',
+        item.kecamatan?.nama || '-',
+        item.desa?.nama || '-',
+        item.jenisUsaha?.uraian || '-',
+        item.tahunBerdiri || '-',
+        item.modalSendiri || 0,
+        item.modalLuar || 0,
+        item.omsetTahun || 0,
+        item.jumlahTenagaKerja || 0,
+        item.nib || '-',
+        item.pirt || '-',
+        item.halal || '-',
+        item.haki || '-',
+        item.statusData || 'BASELINE',
+        item.periodeData || '2021-2024',
+      ]);
+
+      const csvContent =
+        '\uFEFF' +
+        headers.map(escapeCsvCell).join(',') +
+        '\n' +
+        rows.map((row: any[]) => row.map(escapeCsvCell).join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `Rekap_Data_UMKM_Konsel_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Berhasil mengekspor seluruh data (${listToExport.length.toLocaleString('id-ID')} UMKM) ke file Excel/CSV`);
+    } catch (err: any) {
+      console.error('[Export Error]:', err);
+      toast.error(err.response?.data?.message || err.message || 'Gagal mengekspor data UMKM');
+    } finally {
+      setIsExporting(false);
     }
-
-    const headers = [
-      'NIK',
-      'No KK',
-      'Nama Pemilik',
-      'Nama Usaha',
-      'No HP',
-      'Kecamatan',
-      'Desa / Kelurahan',
-      'Jenis Usaha',
-      'Tahun Berdiri',
-      'Modal Sendiri (Rp)',
-      'Modal Luar (Rp)',
-      'Omset Tahunan (Rp)',
-      'Tenaga Kerja',
-      'NIB',
-      'PIRT',
-      'Sertifikat Halal',
-      'HAKI',
-      'Status Data',
-      'Periode Data',
-    ];
-
-    const rows = listToExport.map((item: any) => [
-      item.nik || '-',
-      item.kk || '-',
-      item.namaPemilik || '',
-      item.namaUsaha || '',
-      item.nohp || '-',
-      item.kecamatan?.nama || '-',
-      item.desa?.nama || '-',
-      item.jenisUsaha?.uraian || '-',
-      item.tahunBerdiri || '-',
-      item.modalSendiri || 0,
-      item.modalLuar || 0,
-      item.omsetTahun || 0,
-      item.jumlahTenagaKerja || 0,
-      item.nib || '-',
-      item.pirt || '-',
-      item.halal || '-',
-      item.haki || '-',
-      item.statusData || 'BASELINE',
-      item.periodeData || '2021-2024',
-    ]);
-
-    const csvContent =
-      '\uFEFF' +
-      headers.map(escapeCsvCell).join(',') +
-      '\n' +
-      rows.map((row: any[]) => row.map(escapeCsvCell).join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const dateStr = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `Rekap_Data_UMKM_Konsel_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Berhasil mengekspor ${listToExport.length} data UMKM ke file Excel/CSV`);
   };
 
   // Mutations
@@ -492,15 +569,20 @@ export default function PelakuUmkmPage() {
             variant="outline"
             size="sm"
             onClick={handleExportData}
+            disabled={isExporting}
             className="h-9 text-xs border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
           >
-            <FileSpreadsheet className="w-4 h-4 mr-1.5 text-emerald-600" />
-            Export Excel (.csv)
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 mr-1.5 text-emerald-600 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-4 h-4 mr-1.5 text-emerald-600" />
+            )}
+            {isExporting ? 'Mengekspor Seluruh Data...' : 'Export Excel (.csv)'}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsPrintModalOpen(true)}
+            onClick={handleOpenPrintModal}
             className="h-9 text-xs border-blue-500/40 hover:bg-blue-500/10 text-blue-700 dark:text-blue-300"
           >
             <Printer className="w-4 h-4 mr-1.5 text-blue-600" />
@@ -1436,134 +1518,223 @@ export default function PelakuUmkmPage() {
 
       {/* Modal Dialog Cetak Rekapitulasi Ber-Kop Dinas Resmi */}
       <Dialog open={isPrintModalOpen} onOpenChange={setIsPrintModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
+        <DialogContent className="max-w-[96vw] lg:max-w-7xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader className="print:hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
                 <Printer className="w-5 h-5" />
-                <DialogTitle>Pratinjau Lembar Rekapitulasi Dinas</DialogTitle>
+                <DialogTitle className="text-base sm:text-lg">Pratinjau Lembar Rekapitulasi Dinas</DialogTitle>
               </div>
-              <Button size="sm" onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-500 text-white">
+              <Button
+                size="sm"
+                onClick={() => window.print()}
+                disabled={!printKecamatan || printKecamatan === 'all' || isPrintLoading || printItems.length === 0}
+                className="bg-blue-600 hover:bg-blue-500 text-white"
+              >
                 <Printer className="w-4 h-4 mr-1.5" />
                 Cetak ke Kertas / Simpan PDF
               </Button>
             </div>
-            <DialogDescription className="text-xs">
-              Format lembar rekapitulasi data resmi ber-kop Pemerintah Kabupaten Konawe Selatan.
+            <DialogDescription className="text-xs mt-1">
+              Pilih wilayah filter terlebih dahulu (Kecamatan atau Kecamatan & Desa), lalu cetak rekapitulasi resmi ber-kop Pemerintah Kabupaten Konawe Selatan.
             </DialogDescription>
+
+            {/* Filter Wilayah Sebelum Cetak (Opsi 1: Filter Kecamatan, Opsi 2: Filter Kecamatan dan Desa) */}
+            <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/60 flex flex-col sm:flex-row items-center gap-3 text-left">
+              <div className="w-full sm:w-1/2 space-y-1">
+                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-blue-600" />
+                  1. Filter Kecamatan (Wajib):
+                </Label>
+                <Select
+                  value={printKecamatan}
+                  onValueChange={(val) => {
+                    setPrintKecamatan(val);
+                    setPrintDesa('all');
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-background">
+                    <SelectValue placeholder="-- Pilih Kecamatan Terlebih Dahulu --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {kecamatanList?.map((kec: any) => (
+                      <SelectItem key={kec.id || kec.kecamatan_id} value={String(kec.id || kec.kecamatan_id)} className="text-xs">
+                        {kec.nama || kec.nama_kecamatan}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-1/2 space-y-1">
+                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Building className="w-3.5 h-3.5 text-blue-600" />
+                  2. Filter Desa / Kelurahan (Opsional):
+                </Label>
+                <Select
+                  value={printDesa}
+                  onValueChange={(val) => setPrintDesa(val)}
+                  disabled={!printKecamatan || printKecamatan === 'all' || isPrintDesaLoading}
+                >
+                  <SelectTrigger className="h-8 text-xs bg-background">
+                    <SelectValue placeholder={!printKecamatan || printKecamatan === 'all' ? 'Pilih kecamatan dulu' : '-- Semua Desa (Rekap Se-Kecamatan) --'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">
+                      -- Semua Desa (Rekap Se-Kecamatan) --
+                    </SelectItem>
+                    {printDesaList?.map((desa: any) => (
+                      <SelectItem key={desa.id || desa.des_kel_id} value={String(desa.id || desa.des_kel_id)} className="text-xs">
+                        {desa.nama || desa.nama_des_kel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </DialogHeader>
 
-          {/* Lembar Dokumen Siap Cetak */}
-          <div className="p-6 bg-white text-black rounded-lg border border-gray-300 shadow-xs print:border-none print:shadow-none print:p-0">
-            {/* Kop Surat Kedinasan */}
-            <div className="text-center border-b-4 border-double border-black pb-3 mb-4">
-              <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase">
-                PEMERINTAH KABUPATEN KONAWE SELATAN
-              </h2>
-              <h1 className="text-base sm:text-lg font-black tracking-wider uppercase">
-                DINAS KOPERASI DAN USAHA KECIL MENENGAH
-              </h1>
-              <p className="text-[11px] text-gray-700">
-                Kompleks Perkantoran Pemerintah Daerah Kabupaten Konawe Selatan, Andoolo 93381
-              </p>
-              <p className="text-[10px] text-gray-600">
-                Laman Resmi: konaweselatankab.go.id • Email: dinkop@konaweselatankab.go.id
+          {/* Area Lembar Cetak */}
+          {!printKecamatan || printKecamatan === 'all' ? (
+            <div className="p-8 text-center border rounded-xl bg-amber-500/5 border-amber-500/20 text-amber-800 dark:text-amber-300 space-y-2 my-4">
+              <AlertCircle className="w-8 h-8 mx-auto text-amber-600" />
+              <h4 className="font-bold text-sm">Silakan Tentukan Filter Wilayah Sebelum Mencetak</h4>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                Sesuai tata kelola administrasi kedinasan, lembar rekapitulasi dinas dicetak berdasarkan wilayah per-kecamatan (Opsi 1) atau per-desa (Opsi 2). Silakan pilih kecamatan pada pilihan di atas.
               </p>
             </div>
-
-            {/* Judul Laporan */}
-            <div className="text-center my-3">
-              <h3 className="text-xs sm:text-sm font-bold uppercase underline">
-                REKAPITULASI DATA PELAKU USAHA MIKRO, KECIL, DAN MENENGAH (UMKM)
-              </h3>
-              <p className="text-[11px] text-gray-700 mt-0.5">
-                Sistem Informasi APLI DAKOP v2.0{/* — Dimensi Smart Economy */} Kabupaten Konawe Selatan
-              </p>
-              <div className="flex flex-wrap justify-center gap-2 text-[10px] text-gray-600 mt-1">
-                <span>Filter: {selectedPeriode === 'all' ? 'Semua Periode' : selectedPeriode === 'baseline' ? 'Baseline (2021-2024)' : `Tahun ${selectedPeriode}`}</span>
-                <span>•</span>
-                <span>Total Data Tampil: {items.length} Baris</span>
-                <span>•</span>
-                <span>Waktu Unduh: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+          ) : isPrintLoading ? (
+            <div className="p-12 text-center my-4 space-y-2">
+              <Loader2 className="w-8 h-8 mx-auto animate-spin text-blue-600" />
+              <p className="text-xs text-muted-foreground">Memuat seluruh data UMKM wilayah terpilih...</p>
+            </div>
+          ) : (
+            <div className="p-6 bg-white text-black rounded-lg border border-gray-300 shadow-xs print:border-none print:shadow-none print:p-0">
+              {/* Kop Surat Kedinasan Ber-Logo Konsel */}
+              <div className="flex items-center justify-between border-b-4 border-double border-black pb-3 mb-4">
+                <div className="shrink-0 w-20 flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/logo_konsel.png"
+                    alt="Logo Kabupaten Konawe Selatan"
+                    className="h-20 w-auto object-contain"
+                  />
+                </div>
+                <div className="flex-1 text-center px-4">
+                  <h2 className="text-sm sm:text-base font-bold tracking-wide uppercase">
+                    PEMERINTAH KABUPATEN KONAWE SELATAN
+                  </h2>
+                  <h1 className="text-base sm:text-lg font-black tracking-wider uppercase text-teal-950">
+                    DINAS KOPERASI DAN USAHA KECIL MENENGAH
+                  </h1>
+                  <p className="text-[11px] text-gray-700">
+                    Kompleks Perkantoran Pemerintah Daerah Kabupaten Konawe Selatan, Andoolo 93381
+                  </p>
+                  <p className="text-[10px] text-gray-600">
+                    Laman Resmi: dinkop.konaweselatankab.go.id • Email: dinkop@konaweselatankab.go.id
+                  </p>
+                </div>
+                <div className="shrink-0 w-20 hidden sm:block" aria-hidden="true" />
               </div>
-            </div>
 
-            {/* Tabel Data Rekapitulasi */}
-            <div className="overflow-x-auto mt-3">
-              <table className="w-full text-[10px] border-collapse border border-gray-400">
-                <thead>
-                  <tr className="bg-gray-100 text-gray-900 font-semibold">
-                    <th className="border border-gray-400 p-1.5 text-center w-7">No</th>
-                    <th className="border border-gray-400 p-1.5 text-left">NIK & Nama Pemilik</th>
-                    <th className="border border-gray-400 p-1.5 text-left">Nama Usaha</th>
-                    <th className="border border-gray-400 p-1.5 text-left">Sektor Usaha</th>
-                    <th className="border border-gray-400 p-1.5 text-left">Kecamatan / Desa</th>
-                    <th className="border border-gray-400 p-1.5 text-center">NIB</th>
-                    <th className="border border-gray-400 p-1.5 text-right">Modal Sendiri</th>
-                    <th className="border border-gray-400 p-1.5 text-right">Omset/Thn</th>
-                    <th className="border border-gray-400 p-1.5 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item: any, idx: number) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="border border-gray-400 p-1 text-center">{idx + 1}</td>
-                      <td className="border border-gray-400 p-1">
-                        <div className="font-semibold">{item.namaPemilik}</div>
-                        <div className="text-[9px] text-gray-600 font-mono">{item.nik}</div>
-                      </td>
-                      <td className="border border-gray-400 p-1 font-medium">{item.namaUsaha}</td>
-                      <td className="border border-gray-400 p-1">{item.jenisUsaha?.uraian || '-'}</td>
-                      <td className="border border-gray-400 p-1">
-                        <div>{item.kecamatan?.nama || '-'}</div>
-                        <div className="text-[9px] text-gray-600">{item.desa?.nama || '-'}</div>
-                      </td>
-                      <td className="border border-gray-400 p-1 text-center font-mono text-[9px]">
-                        {item.nib && item.nib !== '-' ? item.nib : 'Belum Ada'}
-                      </td>
-                      <td className="border border-gray-400 p-1 text-right font-mono">
-                        Rp {Number(item.modalSendiri || 0).toLocaleString('id-ID')}
-                      </td>
-                      <td className="border border-gray-400 p-1 text-right font-mono">
-                        Rp {Number(item.omsetTahun || 0).toLocaleString('id-ID')}
-                      </td>
-                      <td className="border border-gray-400 p-1 text-center">
-                        <span className="text-[9px] px-1 py-0.5 rounded font-semibold bg-gray-200 text-gray-800">
-                          {item.statusData || 'BASELINE'}
-                        </span>
-                      </td>
+              {/* Judul Laporan */}
+              <div className="text-center my-3">
+                <h3 className="text-xs sm:text-sm font-bold uppercase underline">
+                  REKAPITULASI DATA PELAKU USAHA MIKRO, KECIL, DAN MENENGAH (UMKM)
+                </h3>
+                {namaDesaPrint ? (
+                  <h4 className="text-xs sm:text-sm font-bold uppercase mt-1">
+                    DESA/KELURAHAN {namaDesaPrint}, KECAMATAN {namaKecamatanPrint}
+                  </h4>
+                ) : (
+                  <h4 className="text-xs sm:text-sm font-bold uppercase mt-1">
+                    KECAMATAN {namaKecamatanPrint}
+                  </h4>
+                )}
+              </div>
+
+              {/* Tabel Data Rekapitulasi */}
+              <div className="overflow-x-auto mt-3">
+                <table className="w-full text-[10px] border-collapse border border-gray-400">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-900 font-semibold">
+                      <th className="border border-gray-400 p-1.5 text-center w-7">No</th>
+                      <th className="border border-gray-400 p-1.5 text-left">NIK & Nama Pemilik</th>
+                      <th className="border border-gray-400 p-1.5 text-left">Nama Usaha</th>
+                      <th className="border border-gray-400 p-1.5 text-left">Sektor Usaha</th>
+                      <th className="border border-gray-400 p-1.5 text-left">Kecamatan / Desa</th>
+                      <th className="border border-gray-400 p-1.5 text-center">NIB</th>
+                      <th className="border border-gray-400 p-1.5 text-right">Modal Sendiri</th>
+                      <th className="border border-gray-400 p-1.5 text-right">Omset/Thn</th>
+                      <th className="border border-gray-400 p-1.5 text-center">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Lembar Tanda Tangan Resmi Pengesahan */}
-            <div className="flex justify-between items-end mt-8 pt-4 text-xs text-gray-900">
-              <div className="text-center">
-                <p>Operator Verifikasi Sistem,</p>
-                <div className="h-14"></div>
-                <p className="font-semibold underline">Staf Bidang Pemberdayaan UMKM</p>
-                <p className="text-[10px] text-gray-600">Dinas Koperasi & UKM Kab. Konawe Selatan</p>
+                  </thead>
+                  <tbody>
+                    {printItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="border border-gray-400 p-4 text-center text-gray-500 italic">
+                          Tidak ada data UMKM yang ditemukan untuk filter wilayah ini.
+                        </td>
+                      </tr>
+                    ) : (
+                      printItems.map((item: any, idx: number) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="border border-gray-400 p-1 text-center">{idx + 1}</td>
+                          <td className="border border-gray-400 p-1">
+                            <div className="font-semibold">{item.namaPemilik}</div>
+                            <div className="text-[9px] text-gray-600 font-mono">{item.nik}</div>
+                          </td>
+                          <td className="border border-gray-400 p-1 font-medium">{item.namaUsaha}</td>
+                          <td className="border border-gray-400 p-1">{item.jenisUsaha?.uraian || '-'}</td>
+                          <td className="border border-gray-400 p-1">
+                            <div>{item.kecamatan?.nama || '-'}</div>
+                            <div className="text-[9px] text-gray-600">{item.desa?.nama || '-'}</div>
+                          </td>
+                          <td className="border border-gray-400 p-1 text-center font-mono text-[9px]">
+                            {item.nib && item.nib !== '-' ? item.nib : 'Belum Ada'}
+                          </td>
+                          <td className="border border-gray-400 p-1 text-right font-mono">
+                            Rp {Number(item.modalSendiri || 0).toLocaleString('id-ID')}
+                          </td>
+                          <td className="border border-gray-400 p-1 text-right font-mono">
+                            Rp {Number(item.omsetTahun || 0).toLocaleString('id-ID')}
+                          </td>
+                          <td className="border border-gray-400 p-1 text-center">
+                            <span className="text-[9px] px-1 py-0.5 rounded font-semibold bg-gray-200 text-gray-800">
+                              {item.statusData || 'BASELINE'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="text-center">
-                <p>Andoolo, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p className="font-medium">Mengetahui,</p>
-                <p className="font-semibold">Kepala Dinas Koperasi dan UKM</p>
-                <p className="text-xs">Kabupaten Konawe Selatan</p>
-                <div className="h-12"></div>
-                <p className="font-bold underline">H. IMADUDDIN, S.Pi., M.Si.</p>
-                <p className="text-[10px] font-mono">NIP. 19740510 199903 1 005</p>
+              {/* Lembar Tanda Tangan Resmi Pengesahan */}
+              <div className="flex justify-end mt-8 pt-4 text-xs text-gray-900 break-inside-avoid">
+                <div className="text-center min-w-[240px]">
+                  <p>Andoolo, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="font-medium mt-1">Mengetahui,</p>
+                  <p className="font-bold">Kepala Dinas Koperasi dan UKM</p>
+                  <p className="text-xs">Kabupaten Konawe Selatan</p>
+                  <div className="h-16"></div>
+                  <p className="font-bold underline text-sm">Drs. H. AMRAN, MM.Pub</p>
+                  <p className="text-[11px] font-mono mt-0.5">NIP. 19700808 199403 1 009</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-2 print:hidden">
             <Button variant="outline" onClick={() => setIsPrintModalOpen(false)}>
               Tutup
             </Button>
-            <Button onClick={() => window.print()} className="bg-blue-600 hover:bg-blue-500 text-white">
+            <Button
+              onClick={() => window.print()}
+              disabled={!printKecamatan || printKecamatan === 'all' || isPrintLoading || printItems.length === 0}
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+            >
               <Printer className="w-4 h-4 mr-2" />
               Cetak Dokumen Sekarang (Print / PDF)
             </Button>
