@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/auth-store';
-import { isAdministratorRole } from '@/lib/auth-role';
+import { isAdministratorRole, maskNik } from '@/lib/auth-role';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,8 +87,11 @@ const identityFields: Record<string, string> = {
   keterangan: 'Keterangan Tambahan',
 };
 
-const formatValue = (key: string, val: unknown) => {
+const formatValue = (key: string, val: unknown, allowed = false) => {
   if (val === undefined || val === null || val === '') return '-';
+  if (key === 'nik' || key === 'kk') {
+    return maskNik(val, allowed);
+  }
   if ((key === 'modal_sendiri' || key === 'modal_luar') && (typeof val === 'number' || (typeof val === 'string' && !isNaN(Number(val))))) {
     const num = Number(val);
     return num > 0 ? `Rp ${num.toLocaleString('id-ID')}` : 'Rp 0';
@@ -422,7 +425,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
                         </td>
                         <td className="p-3.5 font-mono text-xs text-muted-foreground">
                           <div className="font-medium text-foreground">#{row.id}</div>
-                          <div>NIK: {row.nik}</div>
+                          <div>NIK: {maskNik(row.nik, allowed)}</div>
                         </td>
                         <td className="p-3.5 text-xs text-muted-foreground">{date(row.created_at)}</td>
                         <td className="p-3.5">{getStatusBadge(row.status)}</td>
@@ -538,7 +541,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
                       <div key={key} className="space-y-0.5">
                         <dt className="text-xs text-muted-foreground">{label}</dt>
                         <dd className="break-words text-sm font-medium text-foreground">
-                          {formatValue(key, identity[key])}
+                          {formatValue(key, identity[key], allowed)}
                         </dd>
                       </div>
                     ))}

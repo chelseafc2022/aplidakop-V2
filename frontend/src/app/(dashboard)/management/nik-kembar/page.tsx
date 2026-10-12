@@ -18,7 +18,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { isAdministratorRole } from '@/lib/auth-role';
+import { isAdministratorRole, maskNik } from '@/lib/auth-role';
 import { useAuthStore } from '@/stores/auth-store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -364,7 +364,7 @@ export default function NikKembarPage() {
               <CardHeader className="bg-muted/30 py-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <CardTitle className="font-mono text-base sm:text-lg">NIK {group.nik}</CardTitle>
+                    <CardTitle className="font-mono text-base sm:text-lg">NIK {maskNik(group.nik, isAdministrator)}</CardTitle>
                     <CardDescription>
                       {group.duplicateCount} baris ditemukan · Batch {group.batchId}
                     </CardDescription>
@@ -464,7 +464,7 @@ export default function NikKembarPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Periksa dan edit data resmi</AlertDialogTitle>
             <AlertDialogDescription>
-              Edit data pilihan untuk NIK {selectedCandidate?.group.nik}. Data baru disimpan setelah Anda menekan Tetapkan data.
+              Edit data pilihan untuk NIK {maskNik(selectedCandidate?.group.nik, isAdministrator)}. Data baru disimpan setelah Anda menekan Tetapkan data.
             </AlertDialogDescription>
           </AlertDialogHeader>
 

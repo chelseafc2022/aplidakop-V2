@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
-import { isAdministratorRole } from '@/lib/auth-role';
+import { isAdministratorRole, maskNik } from '@/lib/auth-role';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
@@ -740,7 +740,7 @@ export default function KoperasiPage() {
                 ['Grade', selectedItem.grade], ['Status Akun ODS Mandiri', selectedItem.statusAkunOdsMandiri], ['Tahun Pendataan', selectedItem.tahunPendataan], ['Tanggal Diterima', selectedItem.tanggalDiterima],
               ] },
               { title: 'Pengurus & Keanggotaan', items: [
-                ['Ketua', selectedItem.ketua], ['NIK Ketua', selectedItem.nikKetua], ['Kontak Ketua', selectedItem.telpKoperasi], ['Sekretaris', selectedItem.namaSekretaris],
+                ['Ketua', selectedItem.ketua], ['NIK Ketua', maskNik(selectedItem.nikKetua, isAdministrator)], ['Kontak Ketua', selectedItem.telpKoperasi], ['Sekretaris', selectedItem.namaSekretaris],
                 ['Bendahara', selectedItem.namaBendahara], ['Pengawas', selectedItem.namaPengawas], ['Jumlah Anggota', selectedItem.jumlahAnggota],
               ] },
             ].map((section) => <section key={section.title} className="rounded-xl border border-border/50 p-4">

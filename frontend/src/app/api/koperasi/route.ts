@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
 import { koperasiSchema } from '@/lib/api-schemas';
-import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { getRequesterRole, parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { maskNik } from '@/lib/auth-role';
 
 const toDateOnly = (value: unknown) => {
   if (!value) return null;
@@ -15,7 +16,7 @@ const toDateOnly = (value: unknown) => {
   }).format(date);
 };
 
-const mapKoperasi = (item: any) => ({
+const mapKoperasi = (item: any, isAdministrator = false) => ({
   id: String(item.id),
   nomorSumber: item.nomor_sumber === null ? null : Number(item.nomor_sumber),
   namaKoperasi: item.nama_koperasi ?? null,
@@ -32,16 +33,16 @@ const mapKoperasi = (item: any) => ({
   statusAktif: String(item.status_koperasi ?? '').trim().toLowerCase() === 'aktif',
   statusKoperasi: item.status_koperasi ?? null,
   ketua: item.nama_ketua ?? null,
-  nikKetua: item.nik_ketua ?? null,
+  nikKetua: maskNik(item.nik_ketua, isAdministrator),
   telpKoperasi: item.hp_ketua ?? null,
   namaSekretaris: item.nama_sek ?? null,
-  nikSekretaris: item.nik_sek ?? null,
+  nikSekretaris: maskNik(item.nik_sek, isAdministrator),
   hpSekretaris: item.hp_sek ?? null,
   namaBendahara: item.nama_ben ?? null,
-  nikBendahara: item.nik_ben ?? null,
+  nikBendahara: maskNik(item.nik_ben, isAdministrator),
   hpBendahara: item.hp_ben ?? null,
   namaPengawas: item.nama_pengawas ?? null,
-  nikPengawas: item.nik_pengawas ?? null,
+  nikPengawas: maskNik(item.nik_pengawas, isAdministrator),
   hpPengawas: item.hp_pengawas ?? null,
   modalAwal: item.modal_sendiri === null ? null : Number(item.modal_sendiri),
   modalLuar: item.modal_luar === null ? null : Number(item.modal_luar),
@@ -71,6 +72,7 @@ const mapKoperasi = (item: any) => ({
 });
 
 export async function GET(req: NextRequest) {
+  const { isAdministrator } = await getRequesterRole(req);
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || 10) || 10));
@@ -90,7 +92,7 @@ export async function GET(req: NextRequest) {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) return NextResponse.json({ message: 'Gagal membaca data koperasi.' }, { status: res.status });
-    const data = Array.isArray(json.data) ? json.data.map(mapKoperasi) : [];
+    const data = Array.isArray(json.data) ? json.data.map((item: any) => mapKoperasi(item, isAdministrator)) : [];
     return NextResponse.json({
       data,
       meta: {

@@ -43,6 +43,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuthStore } from '@/stores/auth-store';
+import { isAdministratorRole, maskNik } from '@/lib/auth-role';
 
 interface PembiayaanItem {
   id: string;
@@ -76,6 +78,8 @@ interface PelakuUmkmSearchItem {
 
 export default function PembiayaanUmkmPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isAdministrator = isAdministratorRole(user?.role?.nama);
 
   // Filters & Pagination State
   const [searchInput, setSearchInput] = useState('');
@@ -640,7 +644,7 @@ export default function PembiayaanUmkmPage() {
                       <td className="px-4 py-3">
                         <div className="font-semibold text-foreground">{item.namaPemilik}</div>
                         <div className="text-xs font-mono text-muted-foreground tracking-tight">
-                          NIK: {item.nik || '-'}
+                          NIK: {maskNik(item.nik, isAdministrator)}
                         </div>
                       </td>
 
@@ -838,7 +842,7 @@ export default function PembiayaanUmkmPage() {
                         <div>
                           <span className="text-muted-foreground block text-[11px]">NIK</span>
                           <span className="font-mono font-semibold text-foreground tracking-tight">
-                            {formData.selectedPelaku.nik}
+                            {maskNik(formData.selectedPelaku.nik, isAdministrator)}
                           </span>
                         </div>
                         <div>
@@ -1010,7 +1014,7 @@ export default function PembiayaanUmkmPage() {
 
                                   {/* Baris 2: NIK dan Lokasi Wilayah */}
                                   <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                    <span className="font-mono text-foreground/80 font-medium">NIK: {u.nik}</span>
+                                    <span className="font-mono text-foreground/80 font-medium">NIK: {maskNik(u.nik, isAdministrator)}</span>
                                     <span>•</span>
                                     <span>
                                       {desaNama !== '-' ? `Desa ${desaNama}, ` : ''}Kec. {kecNama}
@@ -1299,11 +1303,11 @@ export default function PembiayaanUmkmPage() {
                 <div className="grid grid-cols-2 gap-y-2 text-xs">
                   <div>
                     <span className="text-muted-foreground block">Nomor Induk Kependudukan (NIK)</span>
-                    <span className="font-mono font-medium text-foreground">{selectedItem.nik || '-'}</span>
+                    <span className="font-mono font-medium text-foreground">{maskNik(selectedItem.nik, isAdministrator)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground block">Kartu Keluarga (KK)</span>
-                    <span className="font-mono font-medium text-foreground">{selectedItem.kk || '-'}</span>
+                    <span className="font-mono font-medium text-foreground">{maskNik(selectedItem.kk, isAdministrator)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground block">Nomor HP / WhatsApp</span>

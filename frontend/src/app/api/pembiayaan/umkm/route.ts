@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
 import { pembiayaanUmkmSchema } from '@/lib/api-schemas';
-import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { getRequesterRole, parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { maskNik } from '@/lib/auth-role';
 
 export async function GET(req: NextRequest) {
+  const { isAdministrator } = await getRequesterRole(req);
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
   const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit') || 10) || 10));
@@ -45,8 +47,8 @@ export async function GET(req: NextRequest) {
           id: String(item.id || item.idx),
           pelakuId: String(item.pelaku_id || item.master_pelaku_id || ''),
           namaPemilik: item.nama_pemilik || '-',
-          nik: item.nik || '-',
-          kk: item.kk || '-',
+          nik: maskNik(item.nik, isAdministrator),
+          kk: maskNik(item.kk, isAdministrator),
           nohp: item.nohp || '-',
           namaUsaha: item.nama_usaha || '-',
           alamat,

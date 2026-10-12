@@ -106,6 +106,28 @@ export async function requireAdministrator(request: NextRequest) {
   }
 }
 
+export async function getRequesterRole(request: NextRequest): Promise<{ isAdministrator: boolean; roleName: string }> {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { isAdministrator: false, roleName: '' };
+  }
+
+  try {
+    const response = await fetch(`${getBackendStatistikUrl()}/aplidakop_auth/me`, {
+      headers: { Authorization: authHeader },
+      cache: 'no-store',
+      redirect: 'error',
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) return { isAdministrator: false, roleName: '' };
+    const profile = await response.json().catch(() => ({}));
+    const roleName = String(profile.role?.nama || profile.profile?.menu_klp_uraian || '');
+    return { isAdministrator: isAdministratorRole(roleName), roleName };
+  } catch {
+    return { isAdministrator: false, roleName: '' };
+  }
+}
+
 export function safeBackendStatus(status: number): number {
   if ([400, 401, 403, 404, 409, 413, 422, 429].includes(status)) return status;
   return status >= 500 ? 502 : 400;

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
 import { pelakuUmkmSchema } from '@/lib/api-schemas';
-import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { getRequesterRole, parseJsonBody, securityErrorResponse } from '@/lib/server-security';
+import { maskNik } from '@/lib/auth-role';
 
 export async function GET(req: NextRequest) {
+  const { isAdministrator } = await getRequesterRole(req);
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
   const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 10) || 10));
@@ -43,11 +45,11 @@ export async function GET(req: NextRequest) {
         return {
           id: String(item.id || item.nik),
           namaPemilik: item.nama_pemilik || item.nama || '-',
-          nik: item.nik || '-',
+          nik: maskNik(item.nik, isAdministrator),
           namaUsaha: item.nama_usaha || item.uraian || 'Usaha Mikro',
           alamat: item.alamat || `Desa ${item.nama_des_kel || '-'}, Kec. ${item.nama_kecamatan || '-'}`,
           nohp: item.nohp || '-',
-          kk: item.kk || '-',
+          kk: maskNik(item.kk, isAdministrator),
           tahunBerdiri: tb,
           tahunPendataan,
           isBaseline,

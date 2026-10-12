@@ -66,9 +66,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAuthStore } from '@/stores/auth-store';
+import { isAdministratorRole, maskNik } from '@/lib/auth-role';
 
 export default function PelakuUmkmPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isAdministrator = isAdministratorRole(user?.role?.nama);
 
   // Search & 4 Filters state: Jenis Usaha, Kecamatan, Desa, Periode
   const [searchInput, setSearchInput] = useState('');
@@ -239,7 +243,7 @@ export default function PelakuUmkmPage() {
           <td style="text-align: center; font-size: 8pt;">${idx + 1}</td>
           <td>
             <div style="font-weight: bold; font-size: 8.5pt;">${item.namaPemilik || '-'}</div>
-            <div style="font-family: monospace; font-size: 7.5pt; color: #444;">${item.nik || '-'}</div>
+            <div style="font-family: monospace; font-size: 7.5pt; color: #444;">${maskNik(item.nik, isAdministrator)}</div>
           </td>
           <td><div style="font-weight: 500; font-size: 8.5pt;">${item.namaUsaha || '-'}</div></td>
           <td style="font-size: 8pt;">${item.jenisUsaha?.uraian || '-'}</td>
@@ -689,8 +693,8 @@ export default function PelakuUmkmPage() {
       ];
 
       const rows = listToExport.map((item: any) => [
-        item.nik ? String(item.nik) : '-',
-        item.kk ? String(item.kk) : '-',
+        maskNik(item.nik, isAdministrator),
+        maskNik(item.kk, isAdministrator),
         item.namaPemilik || '',
         item.namaUsaha || '',
         item.nohp ? String(item.nohp) : '-',
@@ -1218,7 +1222,7 @@ export default function PelakuUmkmPage() {
                       <div className="text-xs text-muted-foreground">{item.namaPemilik}</div>
                     </td>
                     <td className="px-4 py-3 text-xs">
-                      <div className="font-mono">{item.nik}</div>
+                      <div className="font-mono">{maskNik(item.nik, isAdministrator)}</div>
                       <div className="text-muted-foreground">{item.nohp || '-'}</div>
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -2028,7 +2032,7 @@ export default function PelakuUmkmPage() {
                           <td className="border border-gray-400 p-1 text-center">{idx + 1}</td>
                           <td className="border border-gray-400 p-1">
                             <div className="font-semibold">{item.namaPemilik}</div>
-                            <div className="text-[9px] text-gray-600 font-mono">{item.nik}</div>
+                            <div className="text-[9px] text-gray-600 font-mono">{maskNik(item.nik, isAdministrator)}</div>
                           </td>
                           <td className="border border-gray-400 p-1 font-medium">{item.namaUsaha}</td>
                           <td className="border border-gray-400 p-1">{item.jenisUsaha?.uraian || '-'}</td>
