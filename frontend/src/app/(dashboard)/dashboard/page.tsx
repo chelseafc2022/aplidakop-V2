@@ -552,7 +552,8 @@ export default function DashboardPage() {
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
             </Link>
 
-            {/* Modul 4: Portofolio & Dokumen Inovasi */}
+            {/* Modul 4: Portofolio & Dokumen Inovasi (Hidden to keep UI natural) */}
+            {/*
             <Link
               href="/inovasi"
               className="p-2.5 sm:p-3 rounded-lg border border-border/50 hover:border-amber-500/40 bg-muted/20 hover:bg-amber-500/5 transition-all flex items-center justify-between group"
@@ -571,6 +572,7 @@ export default function DashboardPage() {
               </div>
               <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 ml-2" />
             </Link>
+            */}
           </CardContent>
         </Card>
       </div>
@@ -590,7 +592,7 @@ export default function DashboardPage() {
               </Button>
             </div>
             <DialogDescription className="text-xs">
-              Format lembar ringkasan eksekutif ber-kop resmi Pemerintah Kabupaten Konawe Selatan untuk bahan laporan pimpinan daerah atau dewan juri Smart City.
+              Format lembar ringkasan eksekutif ber-kop resmi Pemerintah Kabupaten Konawe Selatan untuk bahan laporan pimpinan daerah{/* atau dewan juri Smart City */}.
             </DialogDescription>
           </DialogHeader>
 
@@ -608,7 +610,7 @@ export default function DashboardPage() {
                 Kompleks Perkantoran Pemerintah Daerah Kab. Konawe Selatan, Andoolo — Sulawesi Tenggara
               </p>
               <p className="text-[10px] text-gray-600 font-serif italic mt-0.5">
-                Sistem Satu Data Terpadu APLI DAKOP v2.0 (Dimensi Smart Economy)
+                Sistem Satu Data Terpadu APLI DAKOP v2.0{/* (Dimensi Smart Economy) */}
               </p>
             </div>
 

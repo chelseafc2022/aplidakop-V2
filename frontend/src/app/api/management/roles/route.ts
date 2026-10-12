@@ -1,86 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFromBackend } from '@/lib/backend-client';
 
-export async function GET(req: NextRequest) {
+import { roleCreateSchema } from '@/lib/api-schemas';
+import { fetchFromBackend } from '@/lib/backend-client';
+import { parseJsonBody, requireAdministrator, safeBackendStatus, securityErrorResponse } from '@/lib/server-security';
+
+export async function GET(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+
   try {
-    const res = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/view', {
+    const response = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/view', {
       method: 'POST',
       body: JSON.stringify({ page_limit: 100, data_ke: 1, cari_value: '' }),
     });
-
-    if (res.ok) {
-      const json = await res.json();
-      const list = json?.data || json || [];
-      if (Array.isArray(list) && list.length > 0) {
-        return NextResponse.json(
-          list.map((r: any) => ({
-            id: String(r.id),
-            nama: r.uraian || r.kelompok || r.nama || 'Kelompok User',
-            keterangan: r.keterangan || `Role Otorisasi Sistem APLI DAKOP ID #${r.id}`,
-          }))
-        );
-      }
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal membaca daftar role.' }, { status: safeBackendStatus(response.status) });
     }
-  } catch (e) {
-    console.error('[Management Roles GET] Error:', e);
+    const list = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+    return NextResponse.json(list.map((role: any) => ({
+      id: String(role.id),
+      nama: role.uraian || role.kelompok || role.nama || 'Role tanpa nama',
+      keterangan: role.keterangan || '',
+    })));
+  } catch (error) {
+    console.error('[Management Roles] Gagal membaca role.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan role tidak tersedia.' }, { status: 503 });
   }
-
-  // Fallback kelompok user standar
-  return NextResponse.json([
-    {
-      id: '1',
-      nama: 'SUPER_ADMIN',
-      keterangan: 'Administrator Dinas Koperasi dan UMKM (Akses Penuh)',
-    },
-    {
-      id: '2',
-      nama: 'OPERATOR_KECAMATAN',
-      keterangan: 'Petugas Penginput Data Kewilayahan Kecamatan',
-    },
-    {
-      id: '3',
-      nama: 'EVALUATOR_JURI',
-      keterangan: 'Akses Verifikasi Tim Penilai Smart City (Read-Only)',
-    },
-  ]);
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+  const parsed = await parseJsonBody(request, roleCreateSchema, 512 * 1024);
+  if (parsed.error) return parsed.error;
+
   try {
-    const body = await req.json();
-    const { nama, list_menu } = body;
-
-    if (!nama || !nama.trim()) {
-      return NextResponse.json({ message: 'Nama kelompok role wajib diisi' }, { status: 400 });
-    }
-
-    // Ambil default listAdd jika list_menu belum disediakan
-    let menuPayload = list_menu;
-    if (!menuPayload || !Array.isArray(menuPayload) || menuPayload.length === 0) {
-      const menuRes = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/listAdd');
-      if (menuRes.ok) {
-        menuPayload = await menuRes.json();
-      } else {
-        menuPayload = [];
+    let listMenu = parsed.data.list_menu;
+    if (!listMenu?.length) {
+      const menuResponse = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/listAdd');
+      if (!menuResponse.ok) {
+        return NextResponse.json({ message: 'Template hak akses tidak tersedia.' }, { status: safeBackendStatus(menuResponse.status) });
       }
+      listMenu = await menuResponse.json();
     }
-
-    const res = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/addData', {
+    const response = await fetchFromBackend('/api/v1/kelompokUsersAplidakop/addData', {
       method: 'POST',
-      body: JSON.stringify({
-        form: { uraian: nama.trim() },
-        list_menu: menuPayload,
-      }),
+      body: JSON.stringify({ form: { uraian: parsed.data.nama }, list_menu: listMenu }),
     });
-
-    if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Kelompok Role baru berhasil dibuat' });
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal membuat role.' }, { status: safeBackendStatus(response.status) });
     }
-
-    const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal menyimpan role di backend' }, { status: 500 });
-  } catch (err: any) {
-    console.error('[Management Roles POST] Error:', err);
-    return NextResponse.json({ message: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Role baru berhasil dibuat.' });
+  } catch (error) {
+    console.error('[Management Roles] Gagal membuat role.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan role tidak tersedia.' }, { status: 503 });
   }
 }

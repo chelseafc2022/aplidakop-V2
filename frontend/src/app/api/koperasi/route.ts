@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { koperasiSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 const toDateOnly = (value: unknown) => {
   if (!value) return null;
@@ -70,24 +72,24 @@ const mapKoperasi = (item: any) => ({
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get('page') || 1));
-  const limit = Math.min(5000, Math.max(1, Number(searchParams.get('limit') || 10)));
+  const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || 10) || 10));
   try {
     const res = await fetchFromBackend('/api/v1/master_koperasi/view', {
       method: 'POST',
       body: JSON.stringify({
         page_limit: limit,
         data_ke: page,
-        pencarian: searchParams.get('search') || '',
-        cari_value: searchParams.get('kecamatanId') || '',
-        desa_id: searchParams.get('desaId') || '',
-        jenis_koperasi: searchParams.get('jenisKoperasiId') || '',
-        status_aktif: searchParams.get('statusAktif') || '',
-        tahun: searchParams.get('tahun') || '',
+        pencarian: (searchParams.get('search') || '').trim().slice(0, 200),
+        cari_value: (searchParams.get('kecamatanId') || '').trim().slice(0, 64),
+        desa_id: (searchParams.get('desaId') || '').trim().slice(0, 64),
+        jenis_koperasi: (searchParams.get('jenisKoperasiId') || '').trim().slice(0, 64),
+        status_aktif: (searchParams.get('statusAktif') || '').trim().slice(0, 10),
+        tahun: (searchParams.get('tahun') || '').trim().slice(0, 4),
       }),
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) return NextResponse.json({ message: json.message || 'Gagal membaca data koperasi.' }, { status: res.status });
+    if (!res.ok) return NextResponse.json({ message: 'Gagal membaca data koperasi.' }, { status: res.status });
     const data = Array.isArray(json.data) ? json.data.map(mapKoperasi) : [];
     return NextResponse.json({
       data,
@@ -100,6 +102,8 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('[Koperasi] Error fetching from backend:', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan data koperasi tidak tersedia.' }, { status: 503 });
   }
 }
@@ -108,16 +112,19 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   try {
-    const body = await req.json();
+    const parsed = await parseJsonBody(req, koperasiSchema);
+    if (parsed.error) return parsed.error;
     const res = await fetchFromBackend('/api/v1/master_koperasi/addData', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: JSON.stringify(body),
+      body: JSON.stringify(parsed.data),
     });
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   } catch (error) {
     console.error('[Koperasi] Error saving data:', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan data koperasi tidak tersedia.' }, { status: 503 });
   }
 }

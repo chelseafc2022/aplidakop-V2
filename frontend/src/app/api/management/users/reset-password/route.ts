@@ -1,31 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import { resetPasswordSchema } from '@/lib/api-schemas';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { parseJsonBody, requireAdministrator, safeBackendStatus, securityErrorResponse } from '@/lib/server-security';
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+  const parsed = await parseJsonBody(request, resetPasswordSchema, 16 * 1024);
+  if (parsed.error) return parsed.error;
+
   try {
-    const body = await req.json();
-    const { userId, password } = body;
-
-    if (!userId || !password) {
-      return NextResponse.json({ message: 'User ID dan password baru diperlukan' }, { status: 400 });
-    }
-
-    const res = await fetchFromBackend('/api/v1/registrasiAplidakop/editDataPass', {
+    const response = await fetchFromBackend('/api/v1/registrasiAplidakop/editDataPass', {
       method: 'POST',
-      body: JSON.stringify({
-        id: userId,
-        password: password.trim(),
-      }),
+      body: JSON.stringify({ id: parsed.data.userId, password: parsed.data.password }),
     });
-
-    if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Password pengguna berhasil diubah' });
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal mengubah kata sandi pengguna.' }, { status: safeBackendStatus(response.status) });
     }
-
-    const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal mengubah password di database' }, { status: 500 });
-  } catch (error: any) {
-    console.error('[Reset Password] Error:', error);
-    return NextResponse.json({ message: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Kata sandi pengguna berhasil diubah.' });
+  } catch (error) {
+    console.error('[Reset Password] Operasi gagal.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pengguna tidak tersedia.' }, { status: 503 });
   }
 }

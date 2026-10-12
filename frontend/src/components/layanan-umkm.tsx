@@ -100,7 +100,7 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString('id-ID'
 const endpoint = '/api/management/layanan-umkm';
 
 export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
-  const { user, accessToken } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const allowed = isAdministratorRole(user?.role?.nama);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -118,17 +118,14 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
     async (path: string, options: RequestInit = {}) => {
       const response = await fetch(`${endpoint}${path}`, {
         ...options,
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...options.headers },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Permintaan gagal.');
       return data;
     },
-    [accessToken]
+    []
   );
 
   const {
@@ -138,7 +135,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
     refetch: refresh,
   } = useQuery({
     queryKey: ['layanan-umkm', jenis, status, page, query, user?.id],
-    enabled: allowed && !!accessToken,
+    enabled: allowed && isAuthenticated,
     queryFn: () =>
       request(`?${new URLSearchParams({ jenis, status, page: String(page), search: query })}`),
   });
@@ -167,7 +164,7 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
     if (!detail) return;
     try {
       const response = await fetch(`${endpoint}/${detail.id}/dokumen/${key}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'same-origin',
       });
       if (!response.ok) throw new Error('Dokumen tidak dapat diunduh.');
       const blob = await response.blob();

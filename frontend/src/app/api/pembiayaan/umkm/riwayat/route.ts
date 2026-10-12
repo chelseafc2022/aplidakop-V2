@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { securityErrorResponse } from '@/lib/server-security';
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,9 +24,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ message: 'Gagal membaca riwayat penerima bantuan.' }, { status: res.status >= 400 && res.status < 500 ? res.status : 502 });
   } catch (error) {
     console.error('[Riwayat Penerima Bantuan] Error:', error);
-    return NextResponse.json({ data: [] });
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan riwayat bantuan tidak tersedia.' }, { status: 503 });
   }
 }

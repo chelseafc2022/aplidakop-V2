@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { escapeCsvCell } from '@/lib/csv';
 import { useDebounce } from '@/hooks/use-debounce';
 import { toast } from 'sonner';
 import {
@@ -178,12 +179,12 @@ export default function KoperasiPage() {
 
   // Export Excel (.csv)
   const handleExportCSV = async () => {
-    let listToExport: any[] = [];
+    let listToExport: any[];
     try {
       const response = await api.get('/koperasi', {
         params: {
           page: 1,
-          limit: 5000,
+          limit: 100,
           search: debouncedSearch || undefined,
           kecamatanId: selectedKecamatan !== 'all' ? selectedKecamatan : undefined,
           desaId: selectedDesa !== 'all' ? selectedDesa : undefined,
@@ -225,33 +226,36 @@ export default function KoperasiPage() {
 
     const rows = listToExport.map((item: any, idx: number) => [
       idx + 1,
-      `"${(item.namaKoperasi || '').replace(/"/g, '""')}"`,
-      `"${(item.nomorBadanHukum || '-').replace(/"/g, '""')}"`,
+      item.namaKoperasi || '',
+      item.nomorBadanHukum || '-',
       item.tanggalBadanHukum || '-',
       item.nikop || '-',
-      `"${(item.jenisKoperasi?.uraian || '-').replace(/"/g, '""')}"`,
+      item.jenisKoperasi?.uraian || '-',
       item.statusAktif ? 'Aktif' : 'Tidak Aktif',
-      `"${(item.kecamatan?.nama || '-').replace(/"/g, '""')}"`,
-      `"${(item.desa?.nama || '-').replace(/"/g, '""')}"`,
-      `"${(item.alamat || '-').replace(/"/g, '""')}"`,
-      `"${(item.ketua || '-').replace(/"/g, '""')}"`,
+      item.kecamatan?.nama || '-',
+      item.desa?.nama || '-',
+      item.alamat || '-',
+      item.ketua || '-',
       item.telpKoperasi || '-',
       item.jumlahAnggota ?? '',
       item.modalAwal ?? '',
       item.modalLuar ?? '',
       item.asset ?? '',
-      `"${(item.keterangan || '-').replace(/"/g, '""')}"`,
-      `"${(item.bentukKoperasi || '').replace(/"/g, '""')}"`,
-      `"${(item.polaPengelolaan || '').replace(/"/g, '""')}"`,
-      `"${(item.sektorUsaha || '').replace(/"/g, '""')}"`,
-      `"${(item.kelompokKoperasi || '').replace(/"/g, '""')}"`,
-      `"${(item.kabupatenKota || '').replace(/"/g, '""')}"`,
+      item.keterangan || '-',
+      item.bentukKoperasi || '',
+      item.polaPengelolaan || '',
+      item.sektorUsaha || '',
+      item.kelompokKoperasi || '',
+      item.kabupatenKota || '',
       item.kodePos || '', item.email || '', item.kuk ?? '', item.grade || '',
-      `"${(item.statusAkunOdsMandiri || '').replace(/"/g, '""')}"`,
+      item.statusAkunOdsMandiri || '',
       item.tahunPendataan ?? '', item.tanggalDiterima || '',
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((e: any[]) => e.join(','))].join('\n');
+    const csvContent = '\uFEFF' + [
+      headers.map(escapeCsvCell).join(','),
+      ...rows.map((row: any[]) => row.map(escapeCsvCell).join(',')),
+    ].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1169,7 +1173,7 @@ export default function KoperasiPage() {
                 REKAPITULASI DATA KELEMBAGAAN KOPERASI KABUPATEN KONAWE SELATAN
               </h3>
               <p className="text-[11px] text-gray-700 mt-0.5">
-                Sistem Informasi APLI DAKOP v2.0 — Dimensi Smart Economy Kabupaten Konawe Selatan
+                Sistem Informasi APLI DAKOP v2.0{/* — Dimensi Smart Economy */} Kabupaten Konawe Selatan
               </p>
               <div className="flex flex-wrap justify-center gap-2 text-[10px] text-gray-600 mt-1">
                 <span>Total Data Tampil: {items.length} Unit Koperasi</span>

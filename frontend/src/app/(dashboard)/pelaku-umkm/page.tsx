@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import api from '@/lib/api';
+import { escapeCsvCell } from '@/lib/csv';
 import { useDebounce } from '@/hooks/use-debounce';
 import { toast } from 'sonner';
 import {
@@ -329,32 +330,32 @@ export default function PelakuUmkmPage() {
     ];
 
     const rows = listToExport.map((item: any) => [
-      `"${item.nik || '-'}"`,
-      `"${item.kk || '-'}"`,
-      `"${(item.namaPemilik || '').replace(/"/g, '""')}"`,
-      `"${(item.namaUsaha || '').replace(/"/g, '""')}"`,
-      `"${item.nohp || '-'}"`,
-      `"${item.kecamatan?.nama || '-'}"`,
-      `"${item.desa?.nama || '-'}"`,
-      `"${item.jenisUsaha?.uraian || '-'}"`,
+      item.nik || '-',
+      item.kk || '-',
+      item.namaPemilik || '',
+      item.namaUsaha || '',
+      item.nohp || '-',
+      item.kecamatan?.nama || '-',
+      item.desa?.nama || '-',
+      item.jenisUsaha?.uraian || '-',
       item.tahunBerdiri || '-',
       item.modalSendiri || 0,
       item.modalLuar || 0,
       item.omsetTahun || 0,
       item.jumlahTenagaKerja || 0,
-      `"${item.nib || '-'}"`,
-      `"${item.pirt || '-'}"`,
-      `"${item.halal || '-'}"`,
-      `"${item.haki || '-'}"`,
-      `"${item.statusData || 'BASELINE'}"`,
-      `"${item.periodeData || '2021-2024'}"`,
+      item.nib || '-',
+      item.pirt || '-',
+      item.halal || '-',
+      item.haki || '-',
+      item.statusData || 'BASELINE',
+      item.periodeData || '2021-2024',
     ]);
 
     const csvContent =
       '\uFEFF' +
-      headers.join(',') +
+      headers.map(escapeCsvCell).join(',') +
       '\n' +
-      rows.map((r: any[]) => r.join(',')).join('\n');
+      rows.map((row: any[]) => row.map(escapeCsvCell).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -1299,7 +1300,7 @@ export default function PelakuUmkmPage() {
                 Data usaha <strong>{selectedItem?.namaUsaha}</strong> merupakan bagian dari <strong>Basis Data Baseline Resmi (Periode 2021–2024)</strong> yang telah divalidasi oleh Dinas Koperasi & UKM Kab. Konawe Selatan.
               </p>
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300">
-                Untuk menjaga integritas rekam jejak inovasi daerah dan bukti dukung audit evaluasi Smart City, 17.671 data baseline dilindungi dari penghapusan bebas.
+                Untuk menjaga integritas rekam jejak data baseline{/* inovasi daerah dan bukti dukung audit evaluasi Smart City */}, 17.671 data baseline dilindungi dari penghapusan bebas.
               </div>
               <p>
                 Jika data ini memerlukan koreksi informasi, gunakan tombol <strong>Edit</strong> untuk memperbarui data tanpa menghapus rekam jejaknya.
@@ -1476,7 +1477,7 @@ export default function PelakuUmkmPage() {
                 REKAPITULASI DATA PELAKU USAHA MIKRO, KECIL, DAN MENENGAH (UMKM)
               </h3>
               <p className="text-[11px] text-gray-700 mt-0.5">
-                Sistem Informasi APLI DAKOP v2.0 — Dimensi Smart Economy Kabupaten Konawe Selatan
+                Sistem Informasi APLI DAKOP v2.0{/* — Dimensi Smart Economy */} Kabupaten Konawe Selatan
               </p>
               <div className="flex flex-wrap justify-center gap-2 text-[10px] text-gray-600 mt-1">
                 <span>Filter: {selectedPeriode === 'all' ? 'Semua Periode' : selectedPeriode === 'baseline' ? 'Baseline (2021-2024)' : `Tahun ${selectedPeriode}`}</span>

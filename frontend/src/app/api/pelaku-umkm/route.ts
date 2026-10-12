@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { pelakuUmkmSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get('page') || 1);
-  const limit = Number(searchParams.get('limit') || 10);
-  const search = searchParams.get('search') || '';
-  const kecamatanId = searchParams.get('kecamatanId') || '';
-  const desaId = searchParams.get('desaId') || '';
-  const jenisUsahaId = searchParams.get('jenisUsahaId') || '';
-  const periode = searchParams.get('periode') || '';
+  const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit') || 10) || 10));
+  const search = (searchParams.get('search') || '').trim().slice(0, 200);
+  const kecamatanId = (searchParams.get('kecamatanId') || '').trim().slice(0, 64);
+  const desaId = (searchParams.get('desaId') || '').trim().slice(0, 64);
+  const jenisUsahaId = (searchParams.get('jenisUsahaId') || '').trim().slice(0, 64);
+  const periode = (searchParams.get('periode') || '').trim().slice(0, 20);
   const backendPeriode = periode === '2021-2024' ? 'baseline' : periode;
 
   try {
@@ -89,13 +91,14 @@ export async function GET(req: NextRequest) {
         },
       });
     }
-    const errorBody = await res.json().catch(() => ({}));
     return NextResponse.json(
-      { message: errorBody.message || 'Backend gagal membaca data pelaku UMKM.' },
+      { message: 'Backend gagal membaca data pelaku UMKM.' },
       { status: res.status >= 400 ? res.status : 502 },
     );
   } catch (e) {
     console.error('[Pelaku UMKM] Error fetching from backend:', e);
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
     return NextResponse.json(
       { message: 'Layanan data pelaku UMKM tidak tersedia.' },
       { status: 503 },
@@ -105,11 +108,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const parsed = await parseJsonBody(req, pelakuUmkmSchema);
+    if (parsed.error) return parsed.error;
 
     const res = await fetchFromBackend('/api/v1/master_pelaku/addData', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(parsed.data),
     });
 
     const data = await res.json();
@@ -118,14 +122,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: data?.message || 'Gagal menyimpan data ke database server' },
+      { message: 'Gagal menyimpan data ke database server.' },
       { status: res.status >= 400 ? res.status : 400 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error('[Pelaku UMKM] Error saving data:', e);
-    return NextResponse.json(
-      { message: 'Koneksi ke backend gagal: ' + (e?.message || 'Unknown error') },
-      { status: 500 }
-    );
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan data pelaku UMKM tidak tersedia.' }, { status: 503 });
   }
 }

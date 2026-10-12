@@ -41,11 +41,13 @@ const navigationData = {
           url: "/dashboard",
           icon: LayoutDashboard,
         },
+        /*
         {
           title: "Inovasi Smart City",
           url: "/inovasi",
           icon: Award,
         },
+        */
       ],
     },
     {
@@ -133,11 +135,13 @@ const navigationData = {
           title: "Manajemen Role & RBAC",
           url: "/management/roles",
           icon: ShieldCheck,
+          administratorOnly: true,
         },
         {
           title: "Manajemen Pengguna",
           url: "/management/users",
           icon: Users,
+          administratorOnly: true,
         },
         {
           title: "NIK Kembar UMKM",
@@ -151,11 +155,11 @@ const navigationData = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, accessToken, checkAuth } = useAuthStore()
+  const { user, checkAuth } = useAuthStore()
 
   React.useEffect(() => {
-    if (accessToken) void checkAuth()
-  }, [accessToken, checkAuth])
+    void checkAuth()
+  }, [checkAuth])
 
   const isAdministrator = isAdministratorRole(user?.role?.nama)
   const visibleNavigationGroups = navigationData.navGroups
@@ -168,8 +172,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     .filter((group) => group.items.length > 0)
 
   const currentUser = {
-    name: user?.nama || "Administrator",
-    email: user?.username ? `@${user.username}` : "admin.dinkop@konaweselatankab.go.id",
+    name: user?.nama || "Pengguna",
+    email: user?.email || (user?.username ? `@${user.username}` : ""),
     avatar: "",
   }
 

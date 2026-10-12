@@ -1,180 +1,152 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchFromBackend } from '@/lib/backend-client';
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get('page') || '1') || 1;
-  const limit = parseInt(searchParams.get('limit') || '10') || 10;
-  const search = searchParams.get('search') || '';
-  const instansiId = searchParams.get('instansiId') || '';
-  const unitKerjaId = searchParams.get('unitKerjaId') || '';
-  const hasRole = searchParams.get('hasRole') ?? 'true'; // default: 'true' (hanya yang sudah memiliki role)
+import { idBodySchema, userCreateSchema, userUpdateSchema } from '@/lib/api-schemas';
+import { fetchFromBackend } from '@/lib/backend-client';
+import {
+  parseJsonBody,
+  requireAdministrator,
+  safeBackendStatus,
+  securityErrorResponse,
+} from '@/lib/server-security';
+
+export async function GET(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+
+  const { searchParams } = request.nextUrl;
+  const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit') || 10) || 10));
+  const hasRole = searchParams.get('hasRole') ?? 'true';
 
   try {
-    const res = await fetchFromBackend('/api/v1/registrasiAplidakop/view', {
+    const response = await fetchFromBackend('/api/v1/registrasiAplidakop/view', {
       method: 'POST',
       body: JSON.stringify({
         page_limit: limit,
         data_ke: page,
-        cari_value: search,
-        instansi_id: instansiId || undefined,
-        unit_kerja_id: unitKerjaId || undefined,
-        has_role: hasRole === 'all' ? undefined : hasRole,
+        cari_value: (searchParams.get('search') || '').trim().slice(0, 200),
+        instansi_id: (searchParams.get('instansiId') || '').trim().slice(0, 64) || undefined,
+        unit_kerja_id: (searchParams.get('unitKerjaId') || '').trim().slice(0, 64) || undefined,
+        has_role: hasRole === 'all' ? undefined : hasRole === 'true',
       }),
     });
-
-    if (res.ok) {
-      const json = await res.json();
-      const list = json?.data || [];
-      const total = json?.total ?? list.length;
-      const totalPages = json?.jmlData ?? Math.ceil(total / limit);
-
-      return NextResponse.json({
-        data: list.map((u: any) => ({
-          id: String(u.id),
-          username: u.username,
-          nama: u.nama || u.username,
-          nip: u.nip || '-',
-          hp: u.hp || '-',
-          email: u.email || `${u.username}@konaweselatankab.go.id`,
-          instansiId: String(u.instansi_id || ''),
-          instansiNama: u.instansi_nama || 'Pemerintah Kab. Konawe Selatan',
-          unitKerjaId: String(u.unit_kerja_id || ''),
-          unitKerjaNama: u.unit_kerja_nama || '-',
-          role: {
-            id: String(u.menu_klp || u.db_dinkop || '0'),
-            nama: u.menu_klp_uraian || (u.menu_klp > 0 ? `Role #${u.menu_klp}` : 'Belum Ada Role'),
-          },
-          hasRole: !!(u.menu_klp && Number(u.menu_klp) > 0),
-          createdAt: u.createAt || new Date().toISOString(),
-        })),
-        total,
-        totalPages,
-        currentPage: page,
-        limit,
-      });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return NextResponse.json(
+        { message: 'Gagal membaca direktori pengguna.' },
+        { status: safeBackendStatus(response.status) },
+      );
     }
-  } catch (e) {
-    console.error('[Management Users GET] Error:', e);
-  }
 
-  // Fallback demo data
-  return NextResponse.json({
-    data: [
-      {
-        id: '1',
-        username: 'admin',
-        nama: 'Administrator Sistem Dinkop',
-        nip: '198501012010011001',
-        hp: '081234567890',
-        email: 'admin.dinkop@konaweselatankab.go.id',
-        instansiId: '1',
-        instansiNama: 'Dinas Koperasi dan Usaha Kecil Menengah',
-        unitKerjaId: '1',
-        unitKerjaNama: 'Bidang Pemberdayaan dan Pengembangan UMKM',
-        role: { id: '1', nama: 'SUPER_ADMIN' },
-        hasRole: true,
-        createdAt: '2023-01-01',
-      },
-      {
-        id: '2',
-        username: 'op_andoolo',
-        nama: 'Operator Kec. Andoolo',
-        nip: '199003152015021002',
-        hp: '085200000001',
-        email: 'andoolo@konaweselatankab.go.id',
-        instansiId: '1',
-        instansiNama: 'Dinas Koperasi dan Usaha Kecil Menengah',
-        unitKerjaId: '2',
-        unitKerjaNama: 'Bidang Kelembagaan dan Pengawasan Koperasi',
-        role: { id: '2', nama: 'OPERATOR_KECAMATAN' },
-        hasRole: true,
-        createdAt: '2023-06-12',
-      },
-    ],
-    total: 2,
-    totalPages: 1,
-    currentPage: page,
-    limit,
-  });
+    const list = Array.isArray(json?.data) ? json.data : [];
+    const total = Number(json?.total ?? list.length);
+    return NextResponse.json({
+      data: list.map((user: any) => ({
+        id: String(user.id),
+        username: user.username,
+        nama: user.nama || user.username,
+        nip: user.nip || '-',
+        hp: user.hp || '-',
+        email: user.email || '',
+        instansiId: String(user.instansi_id || ''),
+        instansiNama: user.instansi_nama || '-',
+        unitKerjaId: String(user.unit_kerja_id || ''),
+        unitKerjaNama: user.unit_kerja_nama || '-',
+        role: {
+          id: String(user.menu_klp || user.db_dinkop || '0'),
+          nama: user.menu_klp_uraian || 'Belum Ada Role',
+        },
+        hasRole: Number(user.menu_klp || 0) > 0,
+        createdAt: user.createAt || null,
+      })),
+      total,
+      totalPages: Number(json?.jmlData ?? Math.ceil(total / limit)),
+      currentPage: page,
+      limit,
+    });
+  } catch (error) {
+    console.error('[Management Users] Gagal membaca pengguna.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pengguna tidak tersedia.' }, { status: 503 });
+  }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { username, password, nama, email, hp, roleId, nip, unitKerjaId } = body;
+export async function POST(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+  const parsed = await parseJsonBody(request, userCreateSchema, 32 * 1024);
+  if (parsed.error) return parsed.error;
+  const { username, password, email, hp, roleId, nip, unitKerjaId } = parsed.data;
 
-    const res = await fetchFromBackend('/api/v1/registrasiAplidakop/signup', {
+  try {
+    const response = await fetchFromBackend('/api/v1/registrasiAplidakop/signup', {
       method: 'POST',
       body: JSON.stringify({
-        username: username?.trim(),
-        password: password?.trim() || 'password123',
-        email: email?.trim() || `${username}@konaweselatankab.go.id`,
-        hp: hp || '-',
-        unit_kerja: unitKerjaId || '1',
+        username,
+        password,
+        email,
+        hp: hp || '',
+        unit_kerja: unitKerjaId,
         nama_nip: nip || username,
-        menu_klp: Number(roleId) || 1,
+        menu_klp: Number(roleId),
       }),
     });
-
-    if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Pengguna baru berhasil diregistrasi' });
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal mendaftarkan pengguna.' }, { status: safeBackendStatus(response.status) });
     }
-
-    const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal mendaftarkan pengguna baru' }, { status: 500 });
-  } catch (err: any) {
-    console.error('[Management Users POST] Error:', err);
-    return NextResponse.json({ message: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Pengguna baru berhasil diregistrasi.' });
+  } catch (error) {
+    console.error('[Management Users] Gagal membuat pengguna.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pengguna tidak tersedia.' }, { status: 503 });
   }
 }
 
-export async function PUT(req: NextRequest) {
+export async function PUT(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+  const parsed = await parseJsonBody(request, userUpdateSchema, 32 * 1024);
+  if (parsed.error) return parsed.error;
+  const { id, roleId, username, email, hp } = parsed.data;
+
   try {
-    const body = await req.json();
-    const { id, roleId, username, email, hp } = body;
-
-    const res = await fetchFromBackend('/api/v1/registrasiAplidakop/editData', {
+    const response = await fetchFromBackend('/api/v1/registrasiAplidakop/editData', {
       method: 'POST',
-      body: JSON.stringify({
-        id: id,
-        menu_klp: Number(roleId) || 0,
-        username: username || undefined,
-        email: email || undefined,
-        hp: hp || undefined,
-      }),
+      body: JSON.stringify({ id, menu_klp: Number(roleId), username, email, hp }),
     });
-
-    if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Hak akses (role) pengguna berhasil diperbarui' });
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal memperbarui pengguna.' }, { status: safeBackendStatus(response.status) });
     }
-
-    const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal memperbarui role pengguna' }, { status: 500 });
-  } catch (err: any) {
-    console.error('[Management Users PUT] Error:', err);
-    return NextResponse.json({ message: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Pengguna berhasil diperbarui.' });
+  } catch (error) {
+    console.error('[Management Users] Gagal memperbarui pengguna.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pengguna tidak tersedia.' }, { status: 503 });
   }
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(request: NextRequest) {
+  const authorization = await requireAdministrator(request);
+  if (authorization.error) return authorization.error;
+  const parsed = await parseJsonBody(request, idBodySchema, 8 * 1024);
+  if (parsed.error) return parsed.error;
+
   try {
-    const body = await req.json();
-    const { id } = body;
-
-    const res = await fetchFromBackend('/api/v1/registrasiAplidakop/removeData', {
+    const response = await fetchFromBackend('/api/v1/registrasiAplidakop/removeData', {
       method: 'POST',
-      body: JSON.stringify({ id: { id } }),
+      body: JSON.stringify({ id: { id: parsed.data.id } }),
     });
-
-    if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Pengguna berhasil dihapus' });
+    if (!response.ok) {
+      return NextResponse.json({ message: 'Gagal menghapus pengguna.' }, { status: safeBackendStatus(response.status) });
     }
-
-    const text = await res.text();
-    return NextResponse.json({ message: text || 'Gagal menghapus pengguna' }, { status: 500 });
-  } catch (err: any) {
-    console.error('[Management Users DELETE] Error:', err);
-    return NextResponse.json({ message: err.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Pengguna berhasil dihapus.' });
+  } catch (error) {
+    console.error('[Management Users] Gagal menghapus pengguna.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pengguna tidak tersedia.' }, { status: 503 });
   }
 }

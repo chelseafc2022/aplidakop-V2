@@ -39,8 +39,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { username: username.trim(), password });
-      const { user, accessToken, refreshToken } = response.data;
-      setAuth(user, accessToken, refreshToken);
+      const { user } = response.data;
+      setAuth(user);
       toast.success(`Selamat datang kembali, ${user.nama}!`);
       router.push('/dashboard');
     } catch (error: any) {

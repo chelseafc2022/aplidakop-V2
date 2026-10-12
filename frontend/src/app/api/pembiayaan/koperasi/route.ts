@@ -1,87 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+import { pembiayaanKoperasiSchema } from '@/lib/api-schemas';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
+  const page = Math.max(1, Math.min(100_000, Number(request.nextUrl.searchParams.get('page') || 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(request.nextUrl.searchParams.get('limit') || 50) || 50));
+
   try {
-    const res = await fetchFromBackend('/api/v1/stat_pembiayaan_koperasi/view', {
+    const response = await fetchFromBackend('/api/v1/stat_pembiayaan_koperasi/view', {
       method: 'POST',
-      body: JSON.stringify({ page_limit: 100, data_ke: 1, cari_value: '', pencarian: '', desa_id: '', tahun: '' }),
+      body: JSON.stringify({
+        page_limit: limit,
+        data_ke: page,
+        cari_value: '',
+        pencarian: (request.nextUrl.searchParams.get('search') || '').trim().slice(0, 200),
+        desa_id: '',
+        tahun: (request.nextUrl.searchParams.get('tahun') || '').trim().slice(0, 4),
+      }),
     });
-
-    if (res.ok) {
-      const json = await res.json();
-      const list = json?.data || [];
-      if (Array.isArray(list) && list.length > 0) {
-        return NextResponse.json(
-          list.map((item: any) => ({
-            id: String(item.id || item.idx),
-            koperasi: {
-              namaKoperasi: item.nama_koperasi || item.nama || '-',
-              nomorBadanHukum: item.no_bh || item.nomor_badan_hukum || item.nbh || '-',
-              kecamatan: { nama: item.nama_kecamatan || 'Konawe Selatan' },
-            },
-            tahun: Number(item.tahun) || 2026,
-            sumberPembiayaan: item.bantu_tunai ? `Bantuan Permodalan Tunai (${item.bantu_tunai})` : 'Dana Bergulir Daerah',
-            lembagaPenyalur: 'Dinas Koperasi & UMKM Kab. Konawe Selatan',
-            jumlahPinjaman: item.bantu_tunai ? Number(String(item.bantu_tunai).replace(/[^0-9]/g, '')) || 10000000 : 25000000,
-            statusPengajuan: item.status_koperasi || 'Terealisasi',
-            keterangan: item.keterangan || `Fasilitas permodalan koperasi di ${item.nama_kecamatan || 'Konsel'}`,
-          }))
-        );
-      }
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return NextResponse.json(
+        { message: 'Gagal membaca data pembiayaan koperasi.' },
+        { status: response.status >= 400 && response.status < 500 ? response.status : 502 },
+      );
     }
-  } catch (e) {
-    console.error('[Pembiayaan Koperasi] Error:', e);
-  }
 
-  // Fallback data simulasi
-  return NextResponse.json([
-    {
-      id: '1',
-      koperasi: {
-        namaKoperasi: 'KUD Sejahtera Bersama',
-        nomorBadanHukum: 'AHU-00123.AH.01.26.TAHUN 2021',
-        kecamatan: { nama: 'Tinanggea' },
-      },
-      tahun: 2026,
-      sumberPembiayaan: 'LPDB (Lembaga Pengelola Dana Bergulir)',
-      lembagaPenyalur: 'Kemenkop UKM RI',
-      jumlahPinjaman: 250000000,
-      statusPengajuan: 'Disetujui',
-      keterangan: 'Fasilitas permodalan pengadaan pupuk anggota',
-    },
-    {
-      id: '2',
-      koperasi: {
-        namaKoperasi: 'KSP Bina Mandiri Konsel',
-        nomorBadanHukum: 'AHU-00456.AH.01.26.TAHUN 2019',
-        kecamatan: { nama: 'Andoolo' },
-      },
-      tahun: 2026,
-      sumberPembiayaan: 'Subsidi Bunga Pemda',
-      lembagaPenyalur: 'Bank Sultra',
-      jumlahPinjaman: 100000000,
-      statusPengajuan: 'Disetujui',
-      keterangan: 'Pemberdayaan simpan pinjam anggota pasar',
-    },
-  ]);
+    const list = Array.isArray(json?.data) ? json.data : [];
+    return NextResponse.json(
+      list.map((item: any) => ({
+        id: String(item.id || item.idx),
+        koperasi: {
+          namaKoperasi: item.nama_koperasi || item.nama || '-',
+          nomorBadanHukum: item.no_bh || item.nomor_badan_hukum || item.nbh || '-',
+          kecamatan: { nama: item.nama_kecamatan || '-' },
+        },
+        tahun: Number(item.tahun) || new Date().getFullYear(),
+        sumberPembiayaan: item.sumber_pembiayaan || item.bantu_tunai || '-',
+        lembagaPenyalur: item.lembaga_penyalur || '-',
+        jumlahPinjaman: Number(item.jumlah_pinjaman || 0),
+        statusPengajuan: item.status_pengajuan || '-',
+        keterangan: item.keterangan || '-',
+      })),
+    );
+  } catch (error) {
+    console.error('[Pembiayaan Koperasi] Gagal membaca data.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pembiayaan koperasi tidak tersedia.' }, { status: 503 });
+  }
 }
 
-export async function POST(req: NextRequest) {
-  const body = await req.json();
+export async function POST(request: NextRequest) {
+  const parsed = await parseJsonBody(request, pembiayaanKoperasiSchema);
+  if (parsed.error) return parsed.error;
 
   try {
-    const res = await fetchFromBackend('/api/v1/stat_pembiayaan_koperasi/addData', {
+    const response = await fetchFromBackend('/api/v1/stat_pembiayaan_koperasi/addData', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(parsed.data),
     });
-
-    if (res.ok) {
-      return NextResponse.json(await res.json());
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.status === false) {
+      return NextResponse.json(
+        { message: 'Gagal menyimpan data pembiayaan koperasi.' },
+        { status: response.status >= 400 && response.status < 500 ? response.status : 502 },
+      );
     }
-  } catch (e) {
-    console.error('[Pembiayaan Koperasi] Error saving:', e);
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error('[Pembiayaan Koperasi] Gagal menyimpan data.', error);
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan pembiayaan koperasi tidak tersedia.' }, { status: 503 });
   }
-
-  return NextResponse.json({ message: 'Data pembiayaan koperasi berhasil dicatat', data: body });
 }

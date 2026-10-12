@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     if (!backendRes.ok) {
       return NextResponse.json(
-        { message: data.message || 'Gagal membaca ringkasan dashboard.' },
+        { message: 'Gagal membaca ringkasan dashboard.' },
         { status: backendRes.status },
       );
     }

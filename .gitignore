@@ -42,3 +42,8 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .vercel/
+
+# Operational datasets must never be committed to source control
+.private-data/
+Daftar Koperasi Binaan*.xlsx
+kantor.JPG

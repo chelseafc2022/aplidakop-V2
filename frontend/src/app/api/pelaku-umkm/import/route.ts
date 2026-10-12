@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { pelakuImportSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { records, tahun } = body;
-
-    if (!Array.isArray(records) || records.length === 0) {
-      return NextResponse.json(
-        { status: false, message: 'Daftar data impor (records) kosong atau tidak valid.' },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(req, pelakuImportSchema, 2 * 1024 * 1024);
+    if (parsed.error) return parsed.error;
+    const { records, tahun } = parsed.data;
 
     const res = await fetchFromBackend('/api/v1/master_pelaku/batchImport', {
       method: 'POST',
       body: JSON.stringify({
         records,
-        tahun: tahun || '2025',
+        tahun,
       }),
     });
 
@@ -27,24 +23,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Jika backend mengembalikan error status
-    const errData = await res.json().catch(() => null);
     return NextResponse.json(
       {
         status: false,
-        message: errData?.message || 'Gagal memproses batch import di server database.',
-        error: errData,
+        message: 'Gagal memproses batch import di server database.',
       },
-      { status: res.status }
+      { status: res.status >= 400 && res.status < 500 ? res.status : 502 }
     );
-  } catch (err: any) {
+  } catch (err) {
     console.error('[API Pelaku UMKM Import] Error:', err);
+    const securityResponse = securityErrorResponse(err);
+    if (securityResponse) return securityResponse;
     return NextResponse.json(
       {
         status: false,
         message: 'Terjadi kesalahan sistem saat memproses impor data.',
-        error: err.message,
       },
-      { status: 500 }
+      { status: 503 }
     );
   }
 }

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { pembiayaanUmkmSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get('page') || 1);
-  const limit = Number(searchParams.get('limit') || 10);
-  const search = searchParams.get('search') || '';
-  const tahun = searchParams.get('tahun') || '';
-  const kecamatanId = searchParams.get('kecamatanId') || '';
-  const desaId = searchParams.get('desaId') || '';
-  const jenisUsahaId = searchParams.get('jenisUsahaId') || '';
-  const jenisBantuan = searchParams.get('jenisBantuan') || '';
+  const page = Math.max(1, Math.min(100_000, Number(searchParams.get('page') || 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get('limit') || 10) || 10));
+  const search = (searchParams.get('search') || '').trim().slice(0, 200);
+  const tahun = (searchParams.get('tahun') || '').trim().slice(0, 10);
+  const kecamatanId = (searchParams.get('kecamatanId') || '').trim().slice(0, 64);
+  const desaId = (searchParams.get('desaId') || '').trim().slice(0, 64);
+  const jenisUsahaId = (searchParams.get('jenisUsahaId') || '').trim().slice(0, 64);
+  const jenisBantuan = (searchParams.get('jenisBantuan') || '').trim().slice(0, 32);
 
   try {
     const res = await fetchFromBackend('/api/v1/stat_pembiayaan_umkm/view', {
@@ -70,31 +72,31 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const err = await res.json().catch(() => ({}));
     return NextResponse.json(
-      { message: err.message || 'Gagal mengambil data bantuan UMKM' },
+      { message: 'Gagal mengambil data bantuan UMKM.' },
       { status: res.status >= 400 ? res.status : 500 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error('[Bantuan/Pembiayaan UMKM] Error fetching:', e);
-    return NextResponse.json(
-      { message: 'Gagal menghubungi server database: ' + (e?.message || 'Unknown error') },
-      { status: 500 }
-    );
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan data bantuan UMKM tidak tersedia.' }, { status: 503 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const parsed = await parseJsonBody(req, pembiayaanUmkmSchema);
+    if (parsed.error) return parsed.error;
+    const body = parsed.data;
 
     const res = await fetchFromBackend('/api/v1/stat_pembiayaan_umkm/addData', {
       method: 'POST',
       body: JSON.stringify({
-        pelaku_id: body.pelakuId || body.pelaku_id,
+        pelaku_id: body.pelakuId,
         tahun: body.tahun,
-        bantu_tunai: body.bantuTunai !== undefined ? body.bantuTunai : body.bantu_tunai,
-        bantu_sarana: body.bantuSarana !== undefined ? body.bantuSarana : body.bantu_sarana,
+        bantu_tunai: body.bantuTunai,
+        bantu_sarana: body.bantuSarana,
         keterangan: body.keterangan,
       }),
     });
@@ -105,14 +107,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { message: data?.message || 'Gagal menyimpan data bantuan UMKM' },
+      { message: 'Gagal menyimpan data bantuan UMKM.' },
       { status: res.status >= 400 ? res.status : 400 }
     );
-  } catch (e: any) {
+  } catch (e) {
     console.error('[Bantuan/Pembiayaan UMKM] Error saving:', e);
-    return NextResponse.json(
-      { message: 'Koneksi ke backend gagal: ' + (e?.message || 'Unknown error') },
-      { status: 500 }
-    );
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
+    return NextResponse.json({ message: 'Layanan data bantuan UMKM tidak tersedia.' }, { status: 503 });
   }
 }

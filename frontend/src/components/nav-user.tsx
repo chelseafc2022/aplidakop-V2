@@ -63,7 +63,7 @@ export function NavUser({
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">{authUser?.role?.nama || "Super Admin"}</span>
+                  <span className="truncate text-xs text-muted-foreground">{authUser?.role?.nama || "Tanpa Role"}</span>
               </div>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -88,11 +88,11 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem className="cursor-pointer">
                 <UserIcon className="mr-2 h-4 w-4" />
-                <span>{authUser?.instansiNama || "Dinas Koperasi & UMKM"}</span>
+                <span>{authUser?.instansiNama || "Instansi tidak tersedia"}</span>
               </DropdownMenuItem>
               <DropdownMenuItem className="cursor-pointer">
                 <Shield className="mr-2 h-4 w-4" />
-                <span>Role: {authUser?.role?.nama || "SUPER_ADMIN"}</span>
+                <span>Role: {authUser?.role?.nama || "Tanpa Role"}</span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { masterJenisSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,13 +24,14 @@ export async function GET(req: NextRequest) {
         );
       }
     }
-    const error = await res.json().catch(() => ({}));
     return NextResponse.json(
-      { message: error.message || 'Gagal membaca Master Jenis Usaha.' },
+      { message: 'Gagal membaca Master Jenis Usaha.' },
       { status: res.status >= 400 ? res.status : 502 },
     );
   } catch (e) {
     console.error('[Master Jenis Usaha] Error:', e);
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan Master Jenis Usaha tidak tersedia.' }, { status: 503 });
   }
 }
@@ -38,19 +41,22 @@ export async function POST(req: NextRequest) {
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
-  const body = await req.json();
+  const parsed = await parseJsonBody(req, masterJenisSchema, 16 * 1024);
+  if (parsed.error) return parsed.error;
 
   try {
     const res = await fetchFromBackend('/api/v1/master_jenis_usaha/addData', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: JSON.stringify(body),
+      body: JSON.stringify(parsed.data),
     });
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[Master Jenis Usaha] Error adding:', e);
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan Master Jenis Usaha tidak tersedia.' }, { status: 503 });
   }
 }

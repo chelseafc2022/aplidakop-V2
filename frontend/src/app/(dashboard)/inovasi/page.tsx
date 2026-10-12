@@ -174,16 +174,16 @@ export default function InovasiSmartCityPage() {
     {
       id: 6,
       no: '06',
-      title: 'Sesuai dengan Salah Satu dari 6 Dimensi Smart City',
+      title: 'Kesesuaian Tata Kelola & Transformasi Digital Daerah', /* Sesuai dengan Salah Satu dari 6 Dimensi Smart City */
       status: 'Terpenuhi',
       isPassed: true,
       category: 'Kesesuaian Dimensi',
       urgency: 'Wajib',
       pemenuhan:
-        'Sangat selaras dengan pilar SMART ECONOMY: Mengembangkan ekosistem ekonomi kerakyatan, mempermudah akses permodalan usaha mikro, memodernisasi tata kelola koperasi, dan menciptakan iklim investasi daerah yang transparan.',
+        'Sangat selaras dengan pilar ekonomi kerakyatan: Mengembangkan ekosistem ekonomi terpadu, mempermudah akses permodalan usaha mikro, memodernisasi tata kelola koperasi, dan menciptakan iklim investasi daerah yang transparan.', /* SMART ECONOMY */
       buktiDukung: [
-        'Kesesuaian dengan Masterplan Smart City Kabupaten Konawe Selatan.',
-        'Fokus pada pilar Smart Economy (Tata Kelola Usaha & Akses Modal Inklusif).',
+        'Kesesuaian dengan Rencana Aksi Transformasi Digital Daerah.', /* Kesesuaian dengan Masterplan Smart City */
+        'Fokus pada penguatan ekonomi kerakyatan (Tata Kelola Usaha & Akses Modal Inklusif).',
         'Mendukung keterpaduan Satu Data Indonesia (SDI) sektor koperasi.',
       ],
       quickLink: '#proposal',
@@ -198,7 +198,7 @@ export default function InovasiSmartCityPage() {
       category: 'Orisinalitas & Kepesertaan',
       urgency: 'Wajib',
       pemenuhan:
-        'Inovasi APLI DAKOP UMKM merupakan karya terpadu baru yang belum pernah menerima predikat Pemenang Utama (Juara 1) pada kompetisi inovasi Smart City periode sebelumnya.',
+        'Inovasi APLI DAKOP UMKM merupakan karya terpadu baru yang belum pernah menerima predikat Pemenang Utama (Juara 1) pada kompetisi inovasi periode sebelumnya.', /* Smart City */
       buktiDukung: [
         'Pernyataan tertulis tim pengusul Pemkab Konawe Selatan.',
         'Dokumen riwayat kepesertaan inovasi daerah.',
@@ -209,16 +209,16 @@ export default function InovasiSmartCityPage() {
     {
       id: 8,
       no: '08',
-      title: 'Maksimal 1 Usulan Inovasi per Dimensi Smart City',
+      title: 'Prioritas Usulan Inovasi Unggulan Daerah', /* Maksimal 1 Usulan Inovasi per Dimensi Smart City */
       status: 'Terpenuhi',
       isPassed: true,
       category: 'Regulasi Kompetisi',
       urgency: 'Wajib',
       pemenuhan:
-        'Diusulkan sebagai SATU-SATUNYA inovasi resmi Pemerintah Kabupaten Konawe Selatan untuk kategori Dimensi SMART ECONOMY pada periode kompetisi ini.',
+        'Diusulkan sebagai inovasi unggulan resmi Pemerintah Kabupaten Konawe Selatan untuk kategori penguatan ekonomi daerah.', /* Dimensi SMART ECONOMY */
       buktiDukung: [
         'Surat rekomendasi pengusulan inovasi dari Bappeda/Diskominfo Kab. Konawe Selatan.',
-        'Pendaftaran tunggal kuota dimensi Smart Economy daerah.',
+        'Pendaftaran tunggal kuota program daerah.', /* kuota dimensi Smart Economy */
       ],
       quickLink: '#proposal',
       quickLinkLabel: 'Periksa Kuota Daerah',
@@ -327,6 +327,8 @@ export default function InovasiSmartCityPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-3 max-w-3xl">
             <div className="flex flex-wrap items-center gap-2">
+              {/* Inovasi Smart City & Dimensi Badges Hidden to keep UI natural */}
+              {/*
               <Badge className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold gap-1.5 px-3 py-1">
                 <Award className="w-3.5 h-3.5" />
                 Inovasi Smart City
@@ -334,6 +336,7 @@ export default function InovasiSmartCityPage() {
               <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 font-medium">
                 Dimensi: Smart Economy
               </Badge>
+              */}
               <Badge variant="secondary" className="font-medium text-xs">
                 Kabupaten Konawe Selatan
               </Badge>
@@ -667,10 +670,10 @@ export default function InovasiSmartCityPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold tracking-tight text-foreground">
-                Sinopsis Proposal Inovasi Smart City
+                Sinopsis Proposal Inovasi Daerah{/* Smart City */}
               </h2>
               <p className="text-xs text-muted-foreground">
-                Format standar pengusulan kompetisi inovasi daerah (Smart Economy).
+                Format standar pengusulan inovasi daerah{/* (Smart Economy) */}.
               </p>
             </div>
             <Button onClick={handlePrint} size="sm" variant="outline" className="text-xs gap-1.5">
@@ -740,11 +743,11 @@ export default function InovasiSmartCityPage() {
                 <Badge variant="outline" className="w-fit text-emerald-400 border-emerald-500/30 mb-1">
                   Bagian 4
                 </Badge>
-                <CardTitle className="text-base font-bold">Keselarasan dengan Dimensi Smart Economy</CardTitle>
+                <CardTitle className="text-base font-bold">Fokus Bidang Perekonomian & Koperasi{/* Keselarasan dengan Dimensi Smart Economy */}</CardTitle>
               </CardHeader>
               <CardContent className="p-4 sm:p-6 pt-0 space-y-2 text-muted-foreground">
                 <p>
-                  Inovasi ini memenuhi kriteria inti dari pilar <strong>Smart Economy</strong>:
+                  Inovasi ini memenuhi kriteria penguatan ekonomi daerah{/* pilar Smart Economy */}:
                 </p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li><strong>Mendorong Ekosistem Transaksi & Investasi Sehat:</strong> Memastikan koperasi yang aktif dan sehat mendapatkan pendampingan sertifikasi dan pembiayaan LPDB.</li>
@@ -781,7 +784,7 @@ export default function InovasiSmartCityPage() {
                 Ruang Verifikasi Tim Penilai & Generator Dokumen Legalitas
               </h2>
               <p className="text-xs text-muted-foreground">
-                Fasilitas pembuktian langsung bagi tim penilai lomba inovasi Smart City.
+                Fasilitas pembuktian langsung bagi tim penilai dan verifikator{/* lomba inovasi Smart City */}.
               </p>
             </div>
           </div>
@@ -861,7 +864,7 @@ export default function InovasiSmartCityPage() {
                   <div className="pl-4 space-y-0.5 text-[11px]">
                     <p>Nama Instansi : Dinas Koperasi dan UMKM Kabupaten Konawe Selatan</p>
                     <p>Judul Inovasi : APLI DAKOP UMKM (Aplikasi Data Koperasi dan Pelaku UMKM)</p>
-                    <p>Dimensi : Smart Economy (Ekonomi Cerdas)</p>
+                    {/* <p>Dimensi : Smart Economy (Ekonomi Cerdas)</p> */}
                   </div>
 
                   <p className="leading-relaxed text-[11px]">
@@ -914,7 +917,7 @@ export default function InovasiSmartCityPage() {
               </Button>
             </div>
             <DialogDescription className="text-xs">
-              Format lembar portofolio evaluasi inovasi resmi ber-kop Pemerintah Kabupaten Konawe Selatan untuk Tim Penilai Smart City.
+              Format lembar portofolio evaluasi inovasi resmi ber-kop Pemerintah Kabupaten Konawe Selatan{/* untuk Tim Penilai Smart City */}.
             </DialogDescription>
           </DialogHeader>
 
@@ -939,10 +942,10 @@ export default function InovasiSmartCityPage() {
             {/* Judul Dokumen Portofolio */}
             <div className="text-center my-2">
               <h3 className="text-xs sm:text-sm font-bold uppercase underline">
-                PORTOFOLIO RESMI & RESUME PENILAIAN INOVASI DAERAH SMART CITY
+                PORTOFOLIO RESMI & RESUME PENILAIAN INOVASI DAERAH{/* SMART CITY */}
               </h3>
               <p className="text-[11px] font-semibold text-gray-800 mt-0.5">
-                APLI DAKOP v2.0 — DIMENSI SMART ECONOMY KABUPATEN KONAWE SELATAN
+                APLI DAKOP v2.0{/* — DIMENSI SMART ECONOMY */} KABUPATEN KONAWE SELATAN
               </p>
               <p className="text-[10px] text-gray-600">
                 Nomor Registrasi Inovasi: 7405/DINKOP/SE-01/2026 • Status: Siap Verifikasi Lapangan (100%)
@@ -957,7 +960,7 @@ export default function InovasiSmartCityPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-gray-800 pt-1">
                 <div><span className="font-semibold">Nama Inovasi:</span> APLI DAKOP v2.0 (Aplikasi Satu Data Koperasi & UMKM)</div>
                 <div><span className="font-semibold">Instansi Pemrakarsa:</span> Dinas Koperasi & UKM Kab. Konawe Selatan</div>
-                <div><span className="font-semibold">Dimensi Smart City:</span> Smart Economy (Ekonomi Cerdas & Mandiri)</div>
+                {/* <div><span className="font-semibold">Dimensi Smart City:</span> Smart Economy (Ekonomi Cerdas & Mandiri)</div> */}
                 <div><span className="font-semibold">Status Operasional:</span> Produksi Aktif (Terhubung Database Daerah)</div>
                 <div><span className="font-semibold">Basis Data UMKM:</span> 17.671 Pelaku Usaha (Baseline 2021–2024 Terverifikasi)</div>
                 <div><span className="font-semibold">Basis Data Koperasi:</span> 326 Koperasi Terdaftar (248 Aktif, 78 Tidak Aktif)</div>
@@ -998,7 +1001,7 @@ export default function InovasiSmartCityPage() {
             {/* III. Ringkasan Kepatuhan 10 Kriteria Inovasi Daerah */}
             <div className="space-y-1.5">
               <div className="text-[11px] font-bold text-gray-900">
-                III. KEPATUHAN 10 KRITERIA PENILAIAN PENGHARGAAN SMART CITY
+                III. KEPATUHAN 10 KRITERIA TATA KELOLA INOVASI DAERAH{/* PENGHARGAAN SMART CITY */}
               </div>
               <table className="w-full text-[9px] border-collapse border border-gray-400">
                 <thead>

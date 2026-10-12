@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFromBackend } from '@/lib/backend-client';
+import { masterJenisSchema, routeIdSchema } from '@/lib/api-schemas';
+import { parseJsonBody, securityErrorResponse } from '@/lib/server-security';
 
 export async function PUT(
   req: NextRequest,
@@ -9,20 +11,24 @@ export async function PUT(
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
-  const { id } = await params;
-  const body = await req.json();
+  const parsedId = routeIdSchema.safeParse((await params).id);
+  if (!parsedId.success) return NextResponse.json({ message: 'ID tidak valid.' }, { status: 400 });
+  const parsed = await parseJsonBody(req, masterJenisSchema, 16 * 1024);
+  if (parsed.error) return parsed.error;
 
   try {
     const res = await fetchFromBackend('/api/v1/master_jenis_koperasi/editData', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: JSON.stringify({ ...body, id }),
+      body: JSON.stringify({ ...parsed.data, id: parsedId.data }),
     });
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[Master Jenis Koperasi] Error updating:', e);
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan Master Jenis Koperasi tidak tersedia.' }, { status: 503 });
   }
 }
@@ -35,19 +41,22 @@ export async function DELETE(
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
-  const { id } = await params;
+  const parsedId = routeIdSchema.safeParse((await params).id);
+  if (!parsedId.success) return NextResponse.json({ message: 'ID tidak valid.' }, { status: 400 });
 
   try {
     const res = await fetchFromBackend('/api/v1/master_jenis_koperasi/removeData', {
       method: 'POST',
       headers: { Authorization: authHeader },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id: parsedId.data }),
     });
 
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (e) {
     console.error('[Master Jenis Koperasi] Error deleting:', e);
+    const securityResponse = securityErrorResponse(e);
+    if (securityResponse) return securityResponse;
     return NextResponse.json({ message: 'Layanan Master Jenis Koperasi tidak tersedia.' }, { status: 503 });
   }
 }
