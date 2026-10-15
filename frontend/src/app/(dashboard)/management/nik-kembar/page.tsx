@@ -138,7 +138,8 @@ const statusLabel: Record<string, string> = {
 export default function NikKembarPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const isAdministrator = isAdministratorRole(user?.role?.nama);
+  const [mounted, setMounted] = useState(false);
+  const isAdministrator = mounted && isAdministratorRole(user?.role?.nama);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -149,6 +150,10 @@ export default function NikKembarPage() {
   } | null>(null);
   const [resolutionForm, setResolutionForm] = useState<ResolutionForm>(emptyResolutionForm);
   const deferredSearch = useDeferredValue(search.trim());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -253,6 +258,15 @@ export default function NikKembarPage() {
     },
   });
 
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-emerald-600" />
+        <span className="text-sm">Memeriksa hak akses administrator...</span>
+      </div>
+    );
+  }
+
   if (!isAdministrator) {
     return (
       <div className="px-4 lg:px-8">
@@ -353,8 +367,13 @@ export default function NikKembarPage() {
         </div>
       ) : error ? (
         <Card className="border-destructive/30">
-          <CardContent className="py-8 text-center text-sm text-destructive">
-            Data NIK kembar gagal dimuat. Pastikan backend aktif dan akun masih memiliki role administrator.
+          <CardContent className="py-8 text-center text-sm text-destructive flex flex-col items-center justify-center gap-1.5">
+            <span className="font-semibold">
+              {(error as any)?.response?.data?.message || 'Data NIK kembar gagal dimuat.'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Pastikan backend server sudah diperbarui ke versi terbaru dan akun memiliki role administrator.
+            </span>
           </CardContent>
         </Card>
       ) : data?.data.length ? (

@@ -76,7 +76,7 @@ const navigationData = {
       ],
     },
     {
-      label: "Verifikasi",
+      label: "Verifikasi Layanan",
       items: [
         {
           title: "Pendaftaran UMKM",
@@ -88,12 +88,6 @@ const navigationData = {
           title: "Bantuan UMKM",
           url: "/verifikasi/bantuan-umkm",
           icon: ClipboardCheck,
-          administratorOnly: true,
-        },
-        {
-          title: "Verifikasi Koperasi",
-          url: "/verifikasi/koperasi",
-          icon: ShieldCheck,
           administratorOnly: true,
         },
       ],
@@ -143,6 +137,17 @@ const navigationData = {
           icon: Users,
           administratorOnly: true,
         },
+      ],
+    },
+    {
+      label: "Verifikasi Mendalam",
+      items: [
+        {
+          title: "Verifikasi Koperasi",
+          url: "/verifikasi/koperasi",
+          icon: ShieldCheck,
+          administratorOnly: true,
+        },
         {
           title: "NIK Kembar UMKM",
           url: "/management/nik-kembar",
@@ -156,12 +161,14 @@ const navigationData = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, checkAuth } = useAuthStore()
+  const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setMounted(true)
     void checkAuth()
   }, [checkAuth])
 
-  const isAdministrator = isAdministratorRole(user?.role?.nama)
+  const isAdministrator = mounted && isAdministratorRole(user?.role?.nama)
   const visibleNavigationGroups = navigationData.navGroups
     .map((group) => ({
       ...group,
@@ -172,8 +179,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     .filter((group) => group.items.length > 0)
 
   const currentUser = {
-    name: user?.nama || "Pengguna",
-    email: user?.email || (user?.username ? `@${user.username}` : ""),
+    name: mounted && user?.nama ? user.nama : "Pengguna",
+    email: mounted ? (user?.email || (user?.username ? `@${user.username}` : "")) : "",
     avatar: "",
   }
 
