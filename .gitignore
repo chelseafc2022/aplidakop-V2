@@ -47,3 +47,5 @@ next-env.d.ts
 .private-data/
 Daftar Koperasi Binaan*.xlsx
 kantor.JPG
+*.pdf
+*_backup/

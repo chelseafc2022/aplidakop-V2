@@ -56,14 +56,20 @@ export function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer rounded-2xl border border-emerald-500/20 hover:border-emerald-500/40 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs hover:bg-white dark:hover:bg-zinc-900 transition-all duration-200 p-2 shadow-xs"
             >
-              <Avatar className="h-8 w-8 rounded-lg bg-emerald-600 text-white font-medium flex items-center justify-center">
-                <AvatarFallback className="bg-emerald-600 text-white text-xs">{initials}</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">{authUser?.role?.nama || "Tanpa Role"}</span>
+              <div className="relative shrink-0">
+                <Avatar className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-medium flex items-center justify-center shadow-xs">
+                  <AvatarFallback className="bg-transparent text-white text-xs font-bold">{initials}</AvatarFallback>
+                </Avatar>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900 shadow-xs" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-semibold text-slate-900 dark:text-slate-100">{user.name}</span>
+                <span className="truncate text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {authUser?.role?.nama || "Tanpa Role"}
+                </span>
               </div>
             </SidebarMenuButton>
           </DropdownMenuTrigger>

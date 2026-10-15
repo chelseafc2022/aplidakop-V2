@@ -100,7 +100,9 @@ const formatValue = (key: string, val: unknown, allowed = false) => {
 };
 
 const date = (value?: string) => (value ? new Date(value).toLocaleString('id-ID') : '-');
-const endpoint = '/api/management/layanan-umkm';
+import { BACKEND_URL, getStoredToken } from '@/lib/api';
+
+const endpoint = `${BACKEND_URL}/api/v1/layanan_umkm`;
 
 export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
   const { user, isAuthenticated } = useAuthStore();
@@ -119,10 +121,14 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
 
   const request = useCallback(
     async (path: string, options: RequestInit = {}) => {
+      const token = getStoredToken();
       const response = await fetch(`${endpoint}${path}`, {
         ...options,
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', ...options.headers },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...options.headers,
+        },
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Permintaan gagal.');
@@ -166,8 +172,9 @@ export function LayananUmkm({ jenis }: { jenis: 'pendaftaran' | 'bantuan' }) {
   async function download(key: string) {
     if (!detail) return;
     try {
+      const token = getStoredToken();
       const response = await fetch(`${endpoint}/${detail.id}/dokumen/${key}`, {
-        credentials: 'same-origin',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       if (!response.ok) throw new Error('Dokumen tidak dapat diunduh.');
       const blob = await response.blob();

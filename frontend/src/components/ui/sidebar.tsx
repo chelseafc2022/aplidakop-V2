@@ -192,7 +192,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden bg-gradient-to-b from-emerald-50/80 via-teal-50/40 to-slate-50/90 dark:from-emerald-950/30 dark:via-zinc-900/70 dark:to-zinc-950 border-r border-emerald-500/15"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -249,7 +249,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm bg-gradient-to-b from-emerald-50/80 via-teal-50/40 to-slate-50/90 dark:from-emerald-950/30 dark:via-zinc-900/70 dark:to-zinc-950 border-r border-emerald-500/15"
         >
           {children}
         </div>

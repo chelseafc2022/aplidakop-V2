@@ -179,42 +179,42 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border/40 p-2 sm:p-2.5">
+      <SidebarHeader className="border-b border-emerald-500/15 p-2.5 sm:p-3">
         <Link
           href="/dashboard"
-          className="flex items-center justify-center w-full rounded-xl py-2 px-1 hover:bg-sidebar-accent/50 transition-colors group/logo"
+          className="flex flex-col items-center justify-center w-full rounded-2xl py-2 px-2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs border border-emerald-500/20 shadow-xs hover:border-emerald-500/40 hover:shadow-sm transition-all duration-200 group/logo"
           title="APLI DAKOP — Dashboard"
         >
           {/* Logo Resmi Lengkap (Expanded Mode) */}
-          <div className="relative flex items-center justify-center w-full group-data-[collapsible=icon]:hidden">
+          <div className="relative flex flex-col items-center justify-center w-full group-data-[collapsible=icon]:hidden">
             <Image
               src="/logo_with_text.png"
               alt="Logo Resmi APLI DAKOP Kab. Konawe Selatan"
               width={260}
               height={70}
-              className="w-full h-auto max-h-[72px] object-contain drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-[1.02]"
+              className="w-full h-auto max-h-[66px] object-contain drop-shadow-xs transition-transform duration-200 group-hover/logo:scale-[1.02]"
               priority
             />
           </div>
           {/* Logo Monogram Lambang Resmi (Collapsed Icon Mode) */}
-          <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center w-full py-1">
+          <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center w-full py-0.5">
             <Image
               src="/logo_only.png"
               alt="APLI DAKOP"
               width={48}
               height={48}
-              className="h-10 w-10 object-contain drop-shadow-sm transition-transform duration-200 group-hover/logo:scale-105"
+              className="h-9 w-9 object-contain drop-shadow-xs transition-transform duration-200 group-hover/logo:scale-105"
               priority
             />
           </div>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="gap-0 py-2">
         {visibleNavigationGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-emerald-500/15 p-2 sm:p-2.5">
         <NavUser user={currentUser} />
       </SidebarFooter>
     </Sidebar>

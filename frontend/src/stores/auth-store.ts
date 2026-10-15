@@ -42,21 +42,44 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
+const initialStoredUser = typeof window !== 'undefined' ? (() => {
+  try {
+    const raw = localStorage.getItem('aplidakop-user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+})() : null;
 
-  setAuth: (user) => set({ user, isAuthenticated: true, isLoading: false }),
-  updateUser: (user) => set({ user }),
+export const useAuthStore = create<AuthState>((set) => ({
+  user: initialStoredUser,
+  isAuthenticated: Boolean(initialStoredUser),
+  isLoading: false,
+
+  setAuth: (user) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aplidakop-user', JSON.stringify(user));
+    }
+    set({ user, isAuthenticated: true, isLoading: false });
+  },
+  updateUser: (user) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aplidakop-user', JSON.stringify(user));
+    }
+    set({ user });
+  },
 
   logout: async () => {
     try {
       await api.post('/auth/logout');
     } catch {
-      // State lokal tetap dibersihkan apabila backend sedang tidak tersedia.
+      // State lokal tetap dibersihkan
     } finally {
-      if (typeof window !== 'undefined') localStorage.removeItem('aplidakop-auth');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('aplidakop-token');
+        localStorage.removeItem('aplidakop-user');
+        localStorage.removeItem('aplidakop-auth');
+      }
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },

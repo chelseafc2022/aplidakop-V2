@@ -1,5 +1,14 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Page() {
-  redirect('/verifikasi/pendaftaran-umkm');
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/verifikasi/pendaftaran-umkm');
+  }, [router]);
+
+  return null;
 }

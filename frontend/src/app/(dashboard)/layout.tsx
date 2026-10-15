@@ -16,6 +16,13 @@ export default function DashboardLayout({
   const [themeCustomizerOpen, setThemeCustomizerOpen] = React.useState(false);
   const { config } = useSidebarConfig();
 
+  React.useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aplidakop-token') : null;
+    if (!token) {
+      window.location.replace('/login');
+    }
+  }, []);
+
   return (
     <SidebarProvider
       style={{
